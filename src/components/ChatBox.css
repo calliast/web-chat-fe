@@ -1,0 +1,21 @@
+/* Custom styles */
+  
+  .d-flex {
+    min-height: 70vh;
+  }
+
+  .card {
+    box-shadow: 0px 0px 20px #ccc;
+  }
+  
+  .form-control {
+    background-color: transparent;
+    border-bottom: 2px solid #57afdc;
+  }
+  .form-control:focus {
+    border-bottom-color: #57afdc;
+    box-shadow: none;
+  }
+  .form-group {
+    padding: 16px;
+  }
