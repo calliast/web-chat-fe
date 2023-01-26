@@ -19,3 +19,11 @@
   .form-group {
     padding: 16px;
   }
+
+  .bg-grey {
+    background-color: #f6f6f6;
+  }
+
+  .bg-blue {
+    background-color: #1c94f7;
+  }

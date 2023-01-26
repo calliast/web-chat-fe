@@ -1,14 +1,8 @@
-import { Fragment, useEffect, useState } from "react";
-import Markdown from "markdown-to-jsx";
+import { Fragment, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser } from "@fortawesome/free-solid-svg-icons";
 
-export default function ChatAddMe({ userId }) {
-  const { user, setUser } = useState(userId);
-
-  const addMe = () => {
-    console.log(user);
-  };
+export default function ChatAddMe({ addMe }) {
 
   return (
     <Fragment>
@@ -24,9 +18,11 @@ export default function ChatAddMe({ userId }) {
             <button
               className="btn text-white border-white"
               style={{ fontSize: "14px" }}
-              onClick={addMe}
+              data-bs-toggle="modal"
+              data-bs-target="#addme"
+              // onClick={addMe}
             >
-              Send message to me
+              Add to contact
             </button>
           </div>
         </div>

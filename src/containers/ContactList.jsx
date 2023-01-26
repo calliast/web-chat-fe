@@ -1,34 +1,34 @@
-import { useAuth } from "../App";
+import { useAuth } from "../auth/AuthContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faTowerBroadcast,
   faPlusCircle,
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { socket } from "./ChatRoom";
-import ContactItem from "./ContactItem";
+import ContactItem from "../components/ContactItem";
+
+import { useDispatch, useSelector } from "react-redux";
+import { signOut } from "../actions/auth";
 
 export default function ContactList() {
   const navigate = useNavigate();
   const auth = useAuth();
+  const dispatch = useDispatch();
   const [receiverID, setReceiverID] = useState("");
-  const [contacts, setContacts] = useState([]);
-  const [publicServer, setPublicServer] = useState(null)
-
-  useEffect(() => {
-    console.log(contacts, "state contacts");
-  }, []);
+  // const [contacts, setContacts] = useState([]);
+  const [publicServer, setPublicServer] = useState(null);
+  const contacts = useSelector(state => state.contacts)
 
   const addContact = () => {
-    console.log(contacts, "state contacts");
     if (receiverID === "") return;
-    setContacts([...contacts, receiverID]);
+    // setContacts([...contacts, receiverID]);
     setReceiverID("");
   };
 
   const sendBroadcast = () => {
-    socket.emit("public-server", {id: socket.id});
+    socket.emit("public-server", { id: socket.id });
   };
 
   return (
@@ -36,24 +36,18 @@ export default function ContactList() {
       className="card h-100 border-0"
       style={{ maxWidth: "48vh", maxHeight: "98vh" }}
     >
-      <div
-        className="card-header text-center"
-        style={{ backgroundColor: "#f8f8f8" }}
-      >
+      <div className="card-header text-center bg-grey">
         <h2 className="p-3" style={{ color: "#6c6665" }}>
           Contacts
         </h2>
       </div>
-      <div
-        className="card-body overflow-auto"
-        style={{ backgroundColor: "#f8f8f8" }}
-      >
+      <div className="card-body overflow-auto bg-grey">
         <div className="d-flex flex-column gap-2">
           <div className="input-group w-auto">
             <button
-              className="btn text-white"
-              style={{ backgroundColor: "#1c94f7" }}
+              className="btn text-white bg-blue"
               onClick={sendBroadcast}
+              title="Broadcast your ID into Public Server"
             >
               <FontAwesomeIcon icon={faTowerBroadcast} />
             </button>
@@ -66,28 +60,26 @@ export default function ContactList() {
               required
             />
             <button
-              className="btn text-white"
-              style={{ backgroundColor: "#1c94f7" }}
+              className="btn text-white bg-blue"
               onClick={addContact}
+              title="Add ID to your contact list"
             >
               <FontAwesomeIcon icon={faPlusCircle} />
             </button>
           </div>
           <hr />
+          <ContactItem newContact={"public-server"} />
           {contacts.map((item, index) => {
             return <ContactItem key={index + 1} newContact={item} />;
           })}
         </div>
       </div>
-      <div
-        className="card-footer border-top-0"
-        style={{ backgroundColor: "#f8f8f8" }}
-      >
+      <div className="card-footer border-top-0 bg-grey">
         <div className="form-group row mx-auto">
           <button
             className="btn btn-outline-danger border-2 rounded-2 mx-auto w-auto"
             onClick={() => {
-              auth.logOut(() => navigate("/"));
+              dispatch(signOut(() => navigate("/")));
             }}
           >
             LOG OUT

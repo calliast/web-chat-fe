@@ -1,67 +1,46 @@
-import axios from "axios";
-import { authHeader } from "./header";
+// import Api from "../services/auth.services";
 
-const api = axios.create({
-  baseURL: "http://localhost:3036/users",
-  timout: 1000,
-  headers: authHeader(),
-});
+// export async function signIn(username, callback) {
+//   try {
+//     const {
+//       data: { data, success },
+//     } = await Api.userSignIn({ username });
+//     if (!success) throw { message: data, code: 401 };
+//     Api.setAuthentication(data.token);
+//     localStorage.setItem("user-data", JSON.stringify(data));
+//     setTimeout(callback, 100);
+//   } catch ({ name, message, code, config, request }) {
+//     console.log(
+//       `Authentication failed\nError\t: ${name}\nCode\t: ${code}\nMessage\t: ${message}`
+//     );
+//   }
+// }
 
-export const authenticator = {
-  token: null,
-  async logIn(username, callback) {
-    try {
-      const {
-        data: { data, success },
-      } = await api.post("/auth", { username });
-      if (!success) throw { message: data, code: 401 };
-      api.defaults.headers.common["Authorization"] = `Bearer ` + data.token;
-      localStorage.setItem("user-data", JSON.stringify(data));
-      console.log(
-        api.defaults.headers.common["Authorization"],
-        "check header axios saat login"
-      );
-      setTimeout(callback, 100);
-    } catch ({ name, message, code, config, api }) {
-      console.log(`${name}: ${code} when authenticating.`);
-    }
-  },
-  async logOut(callback) {
-    try {
-      console.log(
-        api.defaults.headers.common["Authorization"],
-        "check header axios saat logout"
-      );
-      const {
-        data: { data, success },
-      } = await api.post("/logout");
-      if (!success) throw { message: data, code: 401 };
-      localStorage.removeItem("user-data");
-      api.defaults.headers.common["Authorization"] = null;
-      setTimeout(callback, 100);
-    } catch ({ name, message, code, config }) {
-      console.log(`${name}: ${code} when logging out.`);
-      localStorage.removeItem("user-data");
-      api.defaults.headers.common["Authorization"] = null;
-      setTimeout(callback, 100);
-    }
-  },
-  async validate() {
-    return 'hello validate'
+// export async function signOut(callback) {
+//   try {
+//     const {
+//       data: { data, success },
+//     } = await Api.userSignOut();
+//     if (!success) throw { message: data, code: 401 };
+//     localStorage.removeItem("user-data");
+//     Api.setAuthentication(null);
+//     setTimeout(callback, 100);
+//   } catch ({ name, message, code, config, request }) {
+//     console.log(
+//       `Signout failed\nError\t: ${name}\nCode\t: ${code}\nMessage\t: ${message}`
+//     );
+//     localStorage.removeItem("user-data");
+//     Api.setAuthentication(null);
+//     setTimeout(callback, 100);
+//   }
+// }
+
+export function authHeader() {
+  const data = JSON.parse(localStorage.getItem("user-data"));
+
+  if (data && data.token) {
+    return { Authorization: "Bearer " + data.token };
+  } else {
+    return {};
   }
-};
-
-/*
-ALGORITHM:
-
-    1. confirm the end-session by request post to server
-      2. if success:
-          a. remove token from localStorage
-          b. set default headers to null
-          c. set this.token to null
-          d. invoke callback
-      3. if failed:
-          a. throw error "error when logging out"
-          b. for security purpose, do the same step as success
-    
-    */
+}
