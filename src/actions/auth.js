@@ -7,6 +7,7 @@ export const signIn = (username, callback) => async (dispatch, getState) => {
     if (!data?.success) throw data;
     dispatch({
         type: SIGN_IN_SUCCESS,
+        payload: data.data
     })
     setTimeout(callback, 100);
   } catch ({ name, message, code, config, request }) {

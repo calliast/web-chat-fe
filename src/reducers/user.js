@@ -21,11 +21,14 @@ const initialState = user
 
 export default function authReducer(state = initialState, action) {
   const { type, payload } = action;
+  
   switch (type) {
     case SIGN_IN_SUCCESS:
       return {
         ...state,
         isLoggedIn: true,
+        user: payload.name,
+        username: payload.username
       };
     case SIGN_IN_FAILED:
       return {

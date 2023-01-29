@@ -5,79 +5,116 @@ import ChatItem from "../components/ChatItem";
 import ChatAddMe from "../components/ChatAddMe";
 import { io } from "socket.io-client";
 import { useEffect, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { receiveMessage, sendMessage } from "../actions/action";
 
-export const socket = io("http://localhost:3136");
+export const socket = io("http://192.168.1.7:3036");
 
 export default function ChatRoom() {
   const newMessageSent = useRef(null);
   const [input, setInput] = useState("");
   const [displayMessage, setDisplayMessage] = useState([]);
-  const [chat, setChat] = useState(false);
+  const dispatch = useDispatch();
+  const db = useSelector((state) => state.db);
+  const user = useSelector((state) => state.user);
+
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [notify, setNotify] = useState("");
   const [broadcastID, setBroadcastID] = useState("");
-  const [sentID, setSentID] = useState(crypto.randomUUID());
 
   useEffect(() => {
-    socket.on("connect", () => {
-      setIsConnected(true);
-      console.log(`this session ID: ${socket.id}`);
-      setNotify(`You are connected with ID: ${socket.id}`);
-    });
+    // console.log("useeffect chatRoom ke trigger", user);
+    if (user.isLoggedIn) {
+      socket.on("connect", () => {
+        setIsConnected(true);
+        // setNotify(`You are connected with ID: ${socket.id}`);
+        console.log(`You are connected with ID: ${socket.id}`);
+        socket.emit("join-room", user.username);
+      });
 
-    socket.on("disconnect", () => {
-      setIsConnected(false);
-    });
+      socket.on(`receive-chat`, (payload) => {
+        console.log("payload diterima", payload);
+        if (payload.roomID.split("$_&_$").length === 1) {
+          payload.roomID = `${payload.sentBy}$_&_$${payload.roomID}`;
+        }
+        dispatch(receiveMessage(payload));
+      });
 
-    socket.on("public-server", ({ id }) => {
-      console.log("someone broadcasted their ID", id);
-      setBroadcastID(id);
-    });
+      socket.on("disconnect", () => {
+        setIsConnected(false);
+      });
 
-    socket.on("new-message", (newMessage) => {
-      setDisplayMessage((prevMessage) => [...prevMessage, newMessage]);
-    });
+      // socket.on("public-server", ({ id }) => {
+      //   console.log("someone broadcasted their ID", id);
+      //   setBroadcastID(id);
+      // });
 
-    return () => {
-      socket.off("connect");
-      socket.off("disconnect");
-      socket.off("broadcast-id");
-      socket.off("new-message");
-    };
-  }, []);
+      // socket.on("new-message", (newMessage) => {
+      //   setDisplayMessage((prevMessage) => [...prevMessage, newMessage]);
+      // });
+
+      return () => {
+        socket.off("connect");
+        socket.off("disconnect");
+        socket.off("receive-chat");
+        socket.off("new-message");
+      };
+    }
+  }, [user.isLoggedIn]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    setDisplayMessage((prevMessage) => [...prevMessage, input]);
-    sendMessage(input);
+    const payload = {
+      message: input,
+      sentBy: user.username,
+      receiverID: db.selectedContact,
+      roomID: db.selectedChat.roomID,
+      // ? db.selectedChat.roomID
+      // : db.selectedContact,
+    };
+    // setDisplayMessage((prevMessage) => [...prevMessage, input]);
+    dispatch(sendMessage(payload));
+    sendMessageSocket(payload);
     setInput("");
-    // newMessageSent.current.scrollIntoView({behavior: "smooth"})
     newMessageSent.current.scrollTo(0, newMessageSent.current.scrollHeight);
   };
 
-  const sendMessage = (message) => {
-    socket.emit("message", message, sentID);
+  const sendMessageSocket = (payload) => {
+    socket.emit("send-chat", payload);
   };
 
-  const test = (event) => {
-    console.log("scroll bro");
+  const test = () => {
+    const payload = {
+      message: input,
+      sentBy: user.username,
+      receiverID: db.selectedContact,
+      roomID: db.selectedChat.roomID
+        ? db.selectedChat.roomID
+        : db.selectedContact,
+    };
+    console.log("check payload", payload);
+    console.log("check selected chat", db);
   };
 
   const addMe = () => {
     console.log(broadcastID);
   };
+  // console.log(db.selectedChat.conversations, 'cek');
 
   return (
     <Fragment>
-      <div className="col-8 mh-100 bg-white">
+      <div className="col-8 bg-white">
         <div className="card border-0 mw-100">
           <div className="card-header text-center border-0">
             <h2 className="p-3">Receiver Name</h2>
           </div>
+          <button type="button" onClick={test} className="btn btn-secondary">
+            test
+          </button>
         </div>
-        <div className="card mt-4 border-0 mw-100 max-vh-83 bg-grey">
-          <div className="card-body p-2 mw-100">
-            {chat ? (
+        <div className="card mt-4 border-0 mw-100 bg-grey">
+          <div className="card-body p-2">
+            {db.selectedContact ? (
               <>
                 <div
                   id="chat-room"
@@ -90,14 +127,20 @@ export default function ChatRoom() {
                   }}
                   ref={newMessageSent}
                 >
-                  {notify && <ChatItem message={notify} />}
+                  {/* {notify && <ChatItem message={notify} />}
                   {broadcastID && (
                     <ChatAddMe addMe={() => addMe(broadcastID)} />
-                  )}
+                  )} */}
                   {
                     // showMessage &&
-                    displayMessage.map((item, index) => {
-                      return <ChatItem key={index + 1} message={item} />;
+                    db.selectedChat.conversations.map((item, index) => {
+                      return (
+                        <ChatItem
+                          key={index + 1}
+                          message={item.message}
+                          sentBy={item.sentBy}
+                        />
+                      );
                     })
                   }
                 </div>
@@ -132,8 +175,8 @@ export default function ChatRoom() {
                 style={{
                   overflowY: "scroll",
                   height: 550,
-                  minHeight: "40vh",
-                  maxHeight: "80vh",
+                  // minHeight: "40vh",
+                  // maxHeight: "100vh",
                 }}
               >
                 <h6 className="lead text-secondary">
@@ -152,7 +195,9 @@ export default function ChatRoom() {
             </div>
             <div className="modal-body">Add into contact list?</div>
             <div className="modal-footer">
-              <button className="btn btn-primary" onClick={test}>Yes</button>
+              <button className="btn btn-primary" onClick={test}>
+                Yes
+              </button>
               <button className="btn btn-secondary" data-bs-dismiss="modal">
                 No
               </button>

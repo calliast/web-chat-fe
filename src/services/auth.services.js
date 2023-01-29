@@ -12,7 +12,7 @@ const userSignIn = async ({ username }) => {
     const { data: response } = await api.post("/api/auth/signin", { username });
     if (!response.success) throw response;
 
-    setAuthentication(response.data.token);
+    setAuthentication(response.data);
     return response;
   } catch (error) {
     console.log(
@@ -39,12 +39,12 @@ const userSignOut = async () => {
   }
 };
 
-const setAuthentication = (token, set = "set") => {
+const setAuthentication = (data, set = "set") => {
   set === "set"
-    ? localStorage.setItem("user-data", JSON.stringify(token))
+    ? localStorage.setItem("user-data", JSON.stringify(data))
     : localStorage.removeItem("user-data");
   return (api.defaults.headers.common["Authorization"] =
-    token === null ? null : `Bearer ${token}`);
+    data.token === null ? null : `Bearer ${data.token}`);
 };
 
 export default {
