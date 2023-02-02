@@ -2,111 +2,94 @@ import { Fragment, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import ChatItem from "../components/ChatItem";
-import ChatAddMe from "../components/ChatAddMe";
-import { io } from "socket.io-client";
 import { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { receiveMessage, sendMessage } from "../actions/action";
-
-export const socket = io("http://192.168.1.7:3036");
+import {
+  deleteMessage,
+  deleteMessageReceipt,
+  receiveMessage,
+  sendMessage,
+} from "../actions/action";
+import { connectSocket, closeSocket, offSocket } from "../actions/action.auth";
 
 export default function ChatRoom() {
   const newMessageSent = useRef(null);
-  const [input, setInput] = useState("");
-  const [displayMessage, setDisplayMessage] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
   const dispatch = useDispatch();
   const db = useSelector((state) => state.db);
   const user = useSelector((state) => state.user);
-
-  const [isConnected, setIsConnected] = useState(socket.connected);
-  const [notify, setNotify] = useState("");
-  const [broadcastID, setBroadcastID] = useState("");
+  const socket = useSelector((state) => state.user.socket);
+  let run = 0;
 
   useEffect(() => {
-    // console.log("useeffect chatRoom ke trigger", user);
-    if (user.isLoggedIn) {
-      socket.on("connect", () => {
-        setIsConnected(true);
-        // setNotify(`You are connected with ID: ${socket.id}`);
-        console.log(`You are connected with ID: ${socket.id}`);
-        socket.emit("join-room", user.username);
-      });
-
-      socket.on(`receive-chat`, (payload) => {
-        console.log("payload diterima", payload);
-        if (payload.roomID.split("$_&_$").length === 1) {
-          payload.roomID = `${payload.sentBy}$_&_$${payload.roomID}`;
-        }
-        dispatch(receiveMessage(payload));
-      });
-
-      socket.on("disconnect", () => {
-        setIsConnected(false);
-      });
-
-      // socket.on("public-server", ({ id }) => {
-      //   console.log("someone broadcasted their ID", id);
-      //   setBroadcastID(id);
-      // });
-
-      // socket.on("new-message", (newMessage) => {
-      //   setDisplayMessage((prevMessage) => [...prevMessage, newMessage]);
-      // });
-
+    if (run === 1) {
+      dispatch(connectSocket());
       return () => {
-        socket.off("connect");
-        socket.off("disconnect");
-        socket.off("receive-chat");
-        socket.off("new-message");
+        dispatch(closeSocket("connect"));
       };
     }
-  }, [user.isLoggedIn]);
+    run++;
+  }, []);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on("receive-chat", (payload) => {
+        console.log("payload masuk receive chat", payload);
+        dispatch(receiveMessage(payload));
+      });
+      socket.on("receive-delete-chat", (payload) => {
+        console.log("payload dari send-delete-chat", payload);
+        dispatch(deleteMessageReceipt(payload));
+      });
+      return () => {
+        dispatch(offSocket("receive-chat"));
+        dispatch(offSocket("receive-delete-chat"));
+      };
+    }
+  }, [socket, dispatch]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    const payload = {
-      message: input,
-      sentBy: user.username,
-      receiverID: db.selectedContact,
-      roomID: db.selectedChat.roomID,
-      // ? db.selectedChat.roomID
-      // : db.selectedContact,
-    };
-    // setDisplayMessage((prevMessage) => [...prevMessage, input]);
-    dispatch(sendMessage(payload));
-    sendMessageSocket(payload);
-    setInput("");
-    newMessageSent.current.scrollTo(0, newMessageSent.current.scrollHeight);
-  };
+    dispatch(
+      sendMessage({
+        message: newMessage,
+      })
+    );
 
-  const sendMessageSocket = (payload) => {
-    socket.emit("send-chat", payload);
+    setNewMessage("");
+    newMessageSent.current.scrollIntoView({ smooth: true });
   };
 
   const test = () => {
     const payload = {
-      message: input,
-      sentBy: user.username,
+      message: newMessage,
+      sentID: user.username,
       receiverID: db.selectedContact,
-      roomID: db.selectedChat.roomID
-        ? db.selectedChat.roomID
-        : db.selectedContact,
     };
     console.log("check payload", payload);
-    console.log("check selected chat", db);
+    console.log("check db", db);
+    console.log("check user", user);
   };
 
-  const addMe = () => {
-    console.log(broadcastID);
+  const removeMessage = (_id, sentStatus) => {
+    const payload = {
+      _id,
+      receiverID: db.selectedContact.username,
+      chatID: db.selectedChat._id,
+    };
+    dispatch(deleteMessage(payload, sentStatus));
   };
-  // console.log(db.selectedChat.conversations, 'cek');
 
   return (
     <Fragment>
       <div className="col-8 bg-white">
         <div className="card border-0 mw-100">
           <div className="card-header text-center border-0">
-            <h2 className="p-3">Receiver Name</h2>
+            <h2 className="p-3">
+              {db.selectedContact?.username
+                ? db.selectedContact?.username
+                : "Receiver Username"}
+            </h2>
           </div>
           <button type="button" onClick={test} className="btn btn-secondary">
             test
@@ -133,12 +116,20 @@ export default function ChatRoom() {
                   )} */}
                   {
                     // showMessage &&
-                    db.selectedChat.conversations.map((item, index) => {
+                    db.selectedChat.conversation.map((item, index) => {
                       return (
                         <ChatItem
-                          key={index + 1}
+                          key={index}
+                          _id={item._id}
                           message={item.message}
-                          sentBy={item.sentBy}
+                          sentID={item.sentID}
+                          receiverID={item.receiverID}
+                          sentStatus={item.sentStatus}
+                          readStatus={item.readStatus}
+                          deleteStatus={item.deleteStatus}
+                          removeMessage={() =>
+                            removeMessage(item._id, item.sentStatus)
+                          }
                         />
                       );
                     })
@@ -153,8 +144,8 @@ export default function ChatRoom() {
                         id="chat"
                         className="form-control mx-2 rounded-pill bg-white"
                         placeholder="Write a message..."
-                        onChange={(e) => setInput(e.target.value)}
-                        value={input}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        value={newMessage}
                         required
                       />
                       <div className="input-group-append">

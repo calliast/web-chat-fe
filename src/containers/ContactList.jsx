@@ -1,4 +1,3 @@
-import { useAuth } from "../auth/AuthContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faTowerBroadcast,
@@ -6,43 +5,41 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { Fragment, useEffect, useState } from "react";
-import { socket } from "./ChatRoom";
 import ContactItem from "../components/ContactItem";
 
 import { useDispatch, useSelector } from "react-redux";
-import { signOut } from "../actions/auth";
-import { addContact, selectContact } from "../actions/action";
+import { signOut } from "../actions/action.auth";
+import { addContact, loadUserData, selectContact } from "../actions/action";
 
 export default function ContactList() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const db = useSelector((state) => state.db);
+  const user = useSelector((state) => state.user);
+  const socket = useSelector((state) => state.user.socket);
 
   const [newContact, setNewContact] = useState("");
   const [contactActive, setContactActive] = useState(null);
 
   useEffect(() => {
-    // console.log('state db di useEffect', db);
+    dispatch(loadUserData());
   }, []);
 
   const handleAddContact = (e) => {
     e.preventDefault();
     if (newContact === "") return;
-    dispatch(addContact({ id: newContact }));
+    dispatch(addContact(newContact));
     setNewContact("");
   };
 
-  const handleSelectContact = (targetID) => {
-    setContactActive(targetID);
-    dispatch(selectContact(targetID));
-    // console.log(db, 'checl status db waktu select');
+  const handleSelectContact = (contact, chatID) => {
+    setContactActive(contact.username);
+    dispatch(selectContact(contact, chatID));
   };
 
   const sendBroadcast = () => {
     socket.emit("public-server", { id: socket.id });
   };
-
-  // const selectChat
 
   const test = () => {
     console.log(contactActive, "state selectednya public-server");
@@ -52,6 +49,7 @@ export default function ContactList() {
     <Fragment>
       <div className="card mw-100 border-0">
         <div className="card-header text-center bg-grey">
+          <h6>{user.user}</h6>
           <h2 className="p-3" style={{ color: "#6c6665" }}>
             Contacts
           </h2>
@@ -62,20 +60,20 @@ export default function ContactList() {
             id="add-contact"
             onSubmit={handleAddContact}
           >
-            <button
+            {/* <button
               type="button"
               className="btn text-white bg-blue"
               onClick={sendBroadcast}
               title="Broadcast your ID into Public Server"
             >
               <FontAwesomeIcon icon={faTowerBroadcast} />
-            </button>
+            </button> */}
             <input
               type="text"
               className="form-control bg-white"
               style={{ maxWidth: "35vh", fontSize: 16 }}
               onChange={(e) => setNewContact(e.target.value)}
-              placeholder="Insert ID"
+              placeholder="Insert username..."
               value={newContact}
               required
             />
@@ -99,19 +97,21 @@ export default function ContactList() {
       >
         <div className="card-body overflow-auto bg-grey">
           <div className="d-flex flex-column gap-2">
-            <ContactItem
-              id={"public-server"}
-              name={"public-server"}
-              selected={() => handleSelectContact("public-server")}
-              set={() => setContactActive("public-server")}
-            />
             {db.contacts.map((item, index) => {
               return (
                 <ContactItem
                   key={index + 1}
+                  _id={item._id}
                   name={item.username}
-                  selected={contactActive}
-                  set={() => handleSelectContact(item.username)}
+                  contactActive={contactActive}
+                  chatID={item.chatID}
+                  unread={item.unreadCount}
+                  setActive={() =>
+                    handleSelectContact(
+                      { username: item.username, _id: item._id },
+                      item.chatID
+                    )
+                  }
                 />
               );
             })}

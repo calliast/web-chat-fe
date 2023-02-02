@@ -3,7 +3,6 @@ import { Routes, Route } from "react-router-dom";
 import Login from "./components/Login";
 import ChatBox from "./components/ChatBox";
 import RequireAuth from "./auth/RequireAuth";
-// import AuthProvider from "./auth/AuthProvider";
 
 export default function App() {
   return (

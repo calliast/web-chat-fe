@@ -1,4 +1,6 @@
 import {
+  CONNECT_SOCKET,
+  DISCONNECT_SOCKET,
   SIGN_IN_FAILED,
   SIGN_IN_SUCCESS,
   SIGN_OUT_FAILED,
@@ -10,13 +12,17 @@ const user = JSON.parse(localStorage.getItem("user-data"));
 const initialState = user
   ? {
       isLoggedIn: true,
+      _id: user._id,
       user: user.name,
       username: user.username,
+      socket: null,
     }
-  : {
+    : {
       isLoggedIn: false,
+      _id: null,
       user: null,
       username: null,
+      socket: null
     };
 
 export default function authReducer(state = initialState, action) {
@@ -27,8 +33,9 @@ export default function authReducer(state = initialState, action) {
       return {
         ...state,
         isLoggedIn: true,
+        _id: payload._id,
         user: payload.name,
-        username: payload.username
+        username: payload.username,
       };
     case SIGN_IN_FAILED:
       return {
@@ -45,6 +52,16 @@ export default function authReducer(state = initialState, action) {
         ...state,
         isLoggedIn: false,
       };
+    case CONNECT_SOCKET:
+      return {
+        ...state,
+        socket: action.socket
+      }
+    case DISCONNECT_SOCKET:
+      return {
+        ...state,
+        socket: null
+      }
     default:
       return state;
   }

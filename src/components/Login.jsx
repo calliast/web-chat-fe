@@ -1,8 +1,7 @@
 import { Fragment, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useDispatch } from "react-redux"
-;
-import { signIn } from "../actions/auth";
+import { useDispatch } from "react-redux";
+import { signIn } from "../actions/action.auth";
 import "../styles/Login.css";
 
 export default function Login(props) {
