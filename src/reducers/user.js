@@ -44,14 +44,20 @@ export default function authReducer(state = initialState, action) {
       };
     case SIGN_OUT_SUCCESS:
       return {
-        ...state,
         isLoggedIn: false,
-      };
+        _id: null,
+        user: null,
+        username: null,
+        socket: null
+      }
     case SIGN_OUT_FAILED:
       return {
-        ...state,
         isLoggedIn: false,
-      };
+        _id: null,
+        user: null,
+        username: null,
+        socket: null
+      }
     case CONNECT_SOCKET:
       return {
         ...state,

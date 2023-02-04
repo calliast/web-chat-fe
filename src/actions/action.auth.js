@@ -1,13 +1,20 @@
 import { io } from "socket.io-client";
 import Auth from "../services/auth.services";
-import { CONNECT_SOCKET, SIGN_IN_FAILED, SIGN_IN_SUCCESS } from "./types";
+import {
+  CLEAN_UP_SESSION,
+  CONNECT_SOCKET,
+  SIGN_IN_FAILED,
+  SIGN_IN_SUCCESS,
+} from "./types";
 
 export const connectSocket = () => async (dispatch, getState) => {
   const { isLoggedIn, username } = getState().user;
-  const currentTimestamp = new Date().getTime() / 1000
+  const currentTimestamp = new Date().getTime() / 1000;
   try {
     if (isLoggedIn) {
-      const socket = io("http://192.168.8.108:3036", { query: { username, timestamp: currentTimestamp } });
+      const socket = io("http://192.168.8.108:3036", {
+        query: { username, timestamp: currentTimestamp },
+      });
       socket.on("connect", () => {
         dispatch({
           type: CONNECT_SOCKET,
@@ -16,14 +23,14 @@ export const connectSocket = () => async (dispatch, getState) => {
       });
     }
   } catch (error) {
-    console.log('error when connecting socket', error);
+    console.log("error when connecting socket", error);
   }
 };
 
 export const closeSocket = (event) => (dispatch, getState) => {
   const { socket } = getState().user;
   if (socket) {
-    socket.close(event)
+    socket.close(event);
     console.log(`Closing socket ${event}`);
   }
 };
@@ -31,7 +38,7 @@ export const closeSocket = (event) => (dispatch, getState) => {
 export const offSocket = (event) => (dispatch, getState) => {
   const { socket } = getState().user;
   if (socket) {
-    socket.off(event)
+    socket.off(event);
     console.log(`Turning off socket ${event}`);
   }
 };
@@ -59,11 +66,17 @@ export const signOut = (callback) => async (dispatch, getState) => {
   try {
     const data = await Auth.userSignOut();
     if (!data?.success) throw data;
+    dispatch({
+      type: CLEAN_UP_SESSION,
+    });
     setTimeout(callback, 100);
   } catch ({ name, message, code, config, request }) {
     console.log(
       `Signout failed\nError\t: ${name}\nCode\t: ${code}\nMessage\t: ${message}`
     );
+    dispatch({
+      type: CLEAN_UP_SESSION,
+    });
     setTimeout(callback, 100);
   }
 };

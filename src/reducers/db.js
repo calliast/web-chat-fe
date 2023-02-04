@@ -8,17 +8,24 @@ import {
   LOAD_USER_DATA_FAILED,
   DELETE_MESSAGE,
   DELETE_MESSAGE_FAILED,
-  DELETE_MESSAGE_RECEIPT,
+  DELETE_MESSAGE_NOTICE,
   SEND_NEW_MESSAGE_FE,
   SEND_NEW_MESSAGE_BE_FAILED,
   RESEND_MESSAGE,
   SEND_MESSAGE_SOCKET,
   DELETE_MESSAGE_UNSENT,
-  SEND_MESSAGE_READ_NOTICE,
+  SEND_READ_NOTICE,
+  UPDATE_READ_NOTICE,
+  CLEAN_UP_SESSION,
 } from "../actions/types";
 
 const initialState = {
-  selectedContact: null,
+  selectedContact: {
+    _id: null,
+    username: null,
+    name: null,
+    unreadCount: 0,
+  },
   selectedChat: {
     contactName: null,
     conversation: [],
@@ -43,7 +50,6 @@ export default function dbReducer(state = initialState, action) {
   const { type, payload, error } = action;
   switch (type) {
     case LOAD_USER_DATA_SUCCESS:
-      console.log(payload, "payload load user");
       return {
         ...state,
         contacts: [...payload.contacts],
@@ -53,7 +59,6 @@ export default function dbReducer(state = initialState, action) {
       console.log("error saat load user data", error);
       return state;
     case ADD_CONTACT_SUCCESS:
-      console.log(payload, "payload add contact");
       return {
         ...state,
         contacts: [
@@ -63,7 +68,7 @@ export default function dbReducer(state = initialState, action) {
             username: payload.contact.username,
             name: payload.contact.name,
             chatID: payload.chat._id,
-            unreadCount: 0,
+            unreadCount: payload.isNew ? 1 : 0,
           },
         ],
         chat: [
@@ -151,7 +156,6 @@ export default function dbReducer(state = initialState, action) {
         }),
       };
     case SEND_NEW_MESSAGE_BE_FAILED:
-      console.log(payload, "payload_reducer_send_message_BE_FAILED");
       return {
         ...state,
         selectedChat: {
@@ -213,42 +217,64 @@ export default function dbReducer(state = initialState, action) {
       };
     case RECEIVE_NEW_MESSAGE:
       console.log(payload, "payload waktu received new message");
-      return {
-        ...state,
-        selectedContact: {
-          ...state.selectedContact,
-          unreadCount: payload.increase
-            ? state.selectedContact.unreadCount + 1
-            : state.selectedContact.unreadCount - 1,
-        },
-        selectedChat: {
-          ...state.selectedChat,
-          conversation: [
-            ...state.selectedChat.conversation,
-            {
-              ...payload.message,
-              sentStatus: payload.increase ? false : true,
-            },
-          ],
-        },
-        chat: state.chat.map((item) => {
-          if (
-            item.contactName.split("$_&_$").includes(payload.message.sentID)
-          ) {
-            return {
-              ...item,
-              conversation: [
-                ...item.conversation,
-                {
-                  ...payload.message,
-                  sentStatus: payload.increase ? false : true,
-                },
-              ],
-            };
-          }
-          return item;
-        }),
-      };
+      if (state.selectedChat._id === payload.chatID) {
+        return {
+          ...state,
+          selectedChat: {
+            ...state.selectedChat,
+            conversation: [
+              ...state.selectedChat.conversation,
+              { ...payload.message },
+            ],
+          },
+          contacts: state.contacts.map((contact) => {
+            if (contact._id === state.selectedContact._id) {
+              contact.unreadCount += 1;
+              return contact;
+            }
+            return contact;
+          }),
+          chat: state.chat.map((item) => {
+            if (item._id === payload.chatID) {
+              return {
+                ...item,
+                conversation: [
+                  ...item.conversation,
+                  {
+                    ...payload.message,
+                  },
+                ],
+              };
+            }
+            return item;
+          }),
+        };
+      } else {
+        return {
+          ...state,
+          contacts: state.contacts.map(contact => {
+            if (contact._id === payload.message.sentID) {
+              contact.unreadCount += 1;
+              return contact
+            }
+            return contact
+          }),
+          chat: state.chat.map((item) => {
+            if (item._id === payload.chatID) {
+              return {
+                ...item,
+                conversation: [
+                  ...item.conversation,
+                  {
+                    ...payload.message,
+                  },
+                ],
+              };
+            }
+            return item;
+          }),
+        };
+      }
     case DELETE_MESSAGE:
       return {
         ...state,
@@ -304,7 +330,7 @@ export default function dbReducer(state = initialState, action) {
     case DELETE_MESSAGE_FAILED:
       console.log(error, "error saat delete");
       return state;
-    case DELETE_MESSAGE_RECEIPT:
+    case DELETE_MESSAGE_NOTICE:
       if (state.selectedChat._id === payload.chatID) {
         return {
           ...state,
@@ -320,7 +346,7 @@ export default function dbReducer(state = initialState, action) {
             }),
           },
           chat: state.chat.map((item) => {
-            if (item._id === state.selectedChat._id) {
+            if (item._id === payload.chatID) {
               return {
                 ...item,
                 conversation: item.conversation.map((item) => {
@@ -340,7 +366,7 @@ export default function dbReducer(state = initialState, action) {
         return {
           ...state,
           chat: state.chat.map((item) => {
-            if (item._id === state.selectedChat._id) {
+            if (item._id === payload.chatID) {
               return {
                 ...item,
                 conversation: item.conversation.map((item) => {
@@ -357,10 +383,73 @@ export default function dbReducer(state = initialState, action) {
           }),
         };
       }
+    case UPDATE_READ_NOTICE:
+      console.log(payload, "receive read notice");
+      return {
+        ...state,
+        selectedChat: {
+          ...state.selectedChat,
+          conversation: state.selectedChat.conversation.map((message) => {
+            let newMessage = {};
+            payload.newMessageIDs.forEach((newData) => {
+              if (message._id === newData._id) {
+                newMessage = { ...message, ...newData };
+              }
+            });
+            if (Object.keys(newMessage).length) {
+              return newMessage;
+            }
+            return message;
+          }),
+        },
+        contacts: state.contacts.map((contact) => {
+          if (contact._id === state.selectedContact._id) {
+            contact.unreadCount -= payload.newMessageIDs.length;
+            return contact;
+          }
+          return contact;
+        }),
+        chat: state.chat.map((item) => {
+          if (item._id === state.selectedChat._id) {
+            return {
+              ...item,
+              conversation: item.conversation.map((message) => {
+                let newMessage = {};
+                payload.newMessageIDs.forEach((newData) => {
+                  if (message._id === newData._id) {
+                    newMessage = { ...message, ...newData };
+                  }
+                });
+                if (Object.keys(newMessage).length) {
+                  return newMessage;
+                }
+                return message;
+              }),
+            };
+          }
+          return item;
+        }),
+      };
     case SEND_MESSAGE_SOCKET:
       return state;
-    case SEND_MESSAGE_READ_NOTICE:
+    case SEND_READ_NOTICE:
       return state;
+    case CLEAN_UP_SESSION:
+      return {
+        ...state,
+        selectedContact: {
+          _id: null,
+          username: null,
+          name: null,
+          unreadCount: 0,
+        },
+        selectedChat: {
+          contactName: null,
+          conversation: [],
+        },
+        contacts: [],
+        chat: [],
+      };
     default:
       return state;
   }

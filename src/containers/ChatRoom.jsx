@@ -6,8 +6,9 @@ import { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   deleteMessage,
-  deleteMessageReceipt,
+  deleteMessageNotice,
   receiveMessage,
+  updateReadNotice,
   sendMessage,
 } from "../actions/action";
 import { connectSocket, closeSocket, offSocket } from "../actions/action.auth";
@@ -37,13 +38,18 @@ export default function ChatRoom() {
         console.log("payload masuk receive chat", payload);
         dispatch(receiveMessage(payload));
       });
-      socket.on("receive-delete-chat", (payload) => {
-        console.log("payload dari send-delete-chat", payload);
-        dispatch(deleteMessageReceipt(payload));
+      socket.on("receive-delete-notice", (payload) => {
+        console.log("payload dari send-delete-notice", payload);
+        dispatch(deleteMessageNotice(payload));
+      });
+      socket.on("receive-read-notice", (payload) => {
+        console.log("payload dari receive-read-notice", payload);
+        dispatch(updateReadNotice(payload));
       });
       return () => {
         dispatch(offSocket("receive-chat"));
-        dispatch(offSocket("receive-delete-chat"));
+        dispatch(offSocket("receive-delete-notice"));
+        dispatch(offSocket("receive-read-notice"));
       };
     }
   }, [socket, dispatch]);
@@ -97,7 +103,7 @@ export default function ChatRoom() {
         </div>
         <div className="card mt-4 border-0 mw-100 bg-grey">
           <div className="card-body p-2">
-            {db.selectedContact ? (
+            {db.selectedContact._id ? (
               <>
                 <div
                   id="chat-room"
@@ -127,6 +133,7 @@ export default function ChatRoom() {
                           sentStatus={item.sentStatus}
                           readStatus={item.readStatus}
                           deleteStatus={item.deleteStatus}
+                          sentTime={item.createdAt}
                           removeMessage={() =>
                             removeMessage(item._id, item.sentStatus)
                           }

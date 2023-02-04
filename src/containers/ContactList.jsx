@@ -96,7 +96,7 @@ export default function ContactList() {
         }}
       >
         <div className="card-body overflow-auto bg-grey">
-          <div className="d-flex flex-column gap-2">
+          <div className="d-flex flex-column gap-1">
             {db.contacts.map((item, index) => {
               return (
                 <ContactItem
@@ -108,7 +108,12 @@ export default function ContactList() {
                   unread={item.unreadCount}
                   setActive={() =>
                     handleSelectContact(
-                      { username: item.username, _id: item._id },
+                      {
+                        _id: item._id,
+                        username: item.username,
+                        name: item.name,
+                        unreadCount: item.unreadCount,
+                      },
                       item.chatID
                     )
                   }
