@@ -16,12 +16,12 @@ import {
   RECEIVE_NEW_MESSAGE,
   RESEND_MESSAGE,
   SELECT_CONTACT,
-  SEND_READ_NOTICE,
+  UPDATE_READ_NOTICE,
   SEND_MESSAGE_SOCKET,
   SEND_NEW_MESSAGE_BE_FAILED,
   SEND_NEW_MESSAGE_BE_SUCCESS,
   SEND_NEW_MESSAGE_FE,
-  UPDATE_READ_NOTICE,
+  UPDATE_READ_STATUS,
 } from "./types";
 
 export const loadUserData = () => async (dispatch, getState) => {
@@ -94,8 +94,8 @@ export const addContact =
 
 export const selectContact =
   (contact, chatID) => async (dispatch, getState) => {
+    console.log("selectcontact - sedang mengeset contact", contact);
     let contactData;
-    let unreadMessageIDs;
     const state = getState().db;
     try {
       if (!chatID) {
@@ -106,13 +106,17 @@ export const selectContact =
         contactData = state.chat.filter((item) => item._id === chatID);
       }
 
-      unreadMessageIDs = contactData[0].conversation.filter(
-        (item) => !item.readStatus
+      let unreadMessageData = contactData[0].conversation.filter(
+        (item) => !item.readStatus && item.sentID === contact._id
       );
-      // Make an array of data for any unread messages
-      if (unreadMessageIDs.length > 0) {
-        updateReadNotice(unreadMessageIDs);
-        sendReadNotice();
+      console.log(
+        "selectcontact - sedang menghitung jika ada message unread",
+        unreadMessageData
+      );
+      let unreadMessageIDs = unreadMessageData.map((contact) => contact._id);
+
+      if (unreadMessageData.length > 0) {
+        dispatch(updateReadStatus(unreadMessageIDs));
       }
 
       dispatch({
@@ -122,32 +126,19 @@ export const selectContact =
           chat: contactData[0],
         },
       });
+
+      // Make an array of data for any unread messages
     } catch (error) {
       console.log("error saat select contact", error);
     }
   };
 
-const sendMessageSocket = (payload) => async (dispatch, getState) => {
-  const state = getState();
-  const socket = getState().user.socket;
-  try {
-    payload.chatID = state.db.selectedChat._id;
-    payload.sentID = state.user.username;
-    payload.receiverID = state.db.selectedContact.username;
-    console.log(payload, "payload socket");
-    socket.emit("send-chat", payload);
-    dispatch({
-      type: SEND_MESSAGE_SOCKET,
-    });
-  } catch (error) {
-    console.log("error saat sendMessageSocket", error);
-  }
-};
-
 export const sendMessage = (payload) => async (dispatch, getState) => {
   const state = getState();
   const _id = Date.now();
   const chatID = state.db.selectedChat._id;
+
+  //. re-Organize payload to include ID
   const newPayload = {
     message: payload.message,
     sentID: state.user._id,
@@ -158,7 +149,7 @@ export const sendMessage = (payload) => async (dispatch, getState) => {
   };
 
   try {
-    //. Sent message to the front-end
+    //. Update the message state
     dispatch({
       type: SEND_NEW_MESSAGE_FE,
       payload: {
@@ -167,7 +158,7 @@ export const sendMessage = (payload) => async (dispatch, getState) => {
       },
     });
 
-    //. Store message to database
+    //. Store message into database via API
     const sendChat = await apiSendMessage(chatID, newPayload);
     if (!sendChat.data.success) throw sendChat;
     dispatch({
@@ -178,8 +169,9 @@ export const sendMessage = (payload) => async (dispatch, getState) => {
       },
     });
 
-    //. Send Message through socket.io
+    //. update the payload with the new ID from database
     newPayload._id = sendChat.data.data.message._id;
+    //. Send Message through socket.io
     dispatch(sendMessageSocket(newPayload));
   } catch (error) {
     console.log("error saat sendMessage", error);
@@ -193,9 +185,28 @@ export const sendMessage = (payload) => async (dispatch, getState) => {
   }
 };
 
+const sendMessageSocket = (payload) => async (dispatch, getState) => {
+  const state = getState();
+  const socket = getState().user.socket;
+  try {
+    //. include chat ID into the payload
+    payload.chatID = state.db.selectedChat._id;
+    //. update the the sender and receiver IDs with username
+    payload.sentID = state.user.username;
+    payload.receiverID = state.db.selectedContact.username;
+
+    socket.emit("send-chat", payload);
+
+    dispatch({
+      type: SEND_MESSAGE_SOCKET,
+    });
+  } catch (error) {
+    console.log("error saat sendMessageSocket", error);
+  }
+};
+
 export const resendMessageRedux =
   (_id, payload) => async (dispatch, getState) => {
-    const state = getState();
     const chatID = getState().db.selectedChat._id;
     try {
       const sendChat = await apiSendMessage(chatID, payload);
@@ -207,10 +218,10 @@ export const resendMessageRedux =
           response: sendChat.data.data,
         },
       });
+
+      //. update the payload with the new ID from database
       payload._id = sendChat.data.data.message._id;
-      payload.chatID = chatID;
-      payload.sentID = state.user.username;
-      payload.receiverID = state.db.selectedContact.username;
+      //. Send Message through socket.io
       dispatch(sendMessageSocket(payload));
     } catch (error) {
       console.log("error saat resend message", error);
@@ -218,20 +229,21 @@ export const resendMessageRedux =
   };
 
 export const receiveMessage = (payload) => async (dispatch, getState) => {
-  console.log("🚀 ~ file: action.js:205 ~ receiveMessage ~ payload", payload);
-  const state = getState().db;
+  const user = getState().user
+  const db = getState().db;
   const chatID = payload.chatID;
   delete payload.chatID;
   try {
     //. Check if contact exist in contact list
-    if (
-      state.contacts.filter((item) => {
-        return item.username === payload.sentID;
-      }).length === 0
-    ) {
+    const checkContact = db.contacts.filter((item) => item.username === payload.sentID);
+    if (checkContact.length === 0) {
       // if no, then add as new contact
       dispatch(addContact(payload.sentID, chatID, true));
     }
+
+    //. Replace payload's username with IDs
+    payload.receiverID = user._id
+    payload.sentID = checkContact[0]._id
 
     //. Dispatch an action to update state with the new message,
     dispatch({
@@ -243,73 +255,92 @@ export const receiveMessage = (payload) => async (dispatch, getState) => {
     });
 
     //. Check if user currently seeing the same chatID where message intended on being delivered to,
-    if (state.selectedChat._id === chatID) {
-      dispatch(updateReadNotice([payload], true));
-      dispatch(sendReadNotice(payload));
+    if (db.selectedChat._id === chatID) {
+      dispatch(updateReadStatus([payload._id]));
     }
   } catch (error) {
     console.log("error saat receive message", error);
   }
 };
 
-//. send notice that message has been read to the sender
-export const sendReadNotice = (payload) => async (dispatch, getState) => {
+//. notification that message has been read by receiver
+export const updateReadStatus = (messageIDs) => async (dispatch, getState) => {
   const socket = getState().user.socket;
-  const user = getState().user.username;
-  const contact = getState().db.selectedContact.username;
-
-  const messageIDs = payload.map((item) => {
-    item.sentID = user;
-    item.receiverID = contact;
-  });
+  console.log(
+    "updatereadnotice - berikut id message yang akan di update read statusnya",
+    messageIDs
+  );
+  // let newMessageIDs = messageIDs;
   try {
-    dispatch(updateReadNotice(messageIDs));
-    socket.emit("send-read-notice", messageIDs);
+    // if (isReceiver) {
+    const updatedMessageIDs = await apiUpdateReadStatus(messageIDs);
+    if (!updatedMessageIDs.data.success) throw updatedMessageIDs;
+    // newMessageIDs = updatedMessageIDs.data.data;
+    // }
+
+    dispatch({
+      type: UPDATE_READ_STATUS,
+      payload: {
+        newMessageIDs: updatedMessageIDs.data.data,
+      },
+    });
+
+    // if (isReceiver) {
+    const newPayload = {
+      sentID: getState().user.username,
+      receiverID: getState().db.selectedContact.username,
+      payload: {
+        newMessageIDs: updatedMessageIDs.data.data,
+        chatID: getState().db.selectedChat._id,
+      },
+    };
+
+    // dispatch(updateReadNotice(messageIDs));
+    socket.emit("send-read-notice", newPayload);
+    // }
+  } catch (error) {
+    console.log("ini error saat receive read notice", error);
+  }
+};
+
+//. send notice that message has been read to the sender
+export const updateReadNotice = (payload) => async (dispatch, getState) => {
+  console.log(
+    "sendreadnotice - berikut adalah payload yang akan dikirim kembali pada sender",
+    payload
+  );
+
+  try {
+    dispatch({
+      type: UPDATE_READ_NOTICE,
+      payload
+    })
   } catch (error) {
     console.log("ini error saat send read notif", error);
   }
 };
 
-//. notification that message has been read by receiver
-export const updateReadNotice =
-  (messageIDs, isReceiver = null) =>
-  async (dispatch, getState) => {
-    let newMessageIDs = messageIDs;
-    if (isReceiver) {
-      const updatedMessageIDs = await apiUpdateReadStatus(messageIDs);
-      if (!updatedMessageIDs.data.success) throw updatedMessageIDs;
-      newMessageIDs = updatedMessageIDs.data.data;
-    }
-
-    try {
-      dispatch({
-        type: UPDATE_READ_NOTICE,
-        payload: {
-          newMessageIDs,
-        },
-      });
-    } catch (error) {
-      console.log("ini error saat receive read notice", error);
-    }
-  };
-
 export const deleteMessage =
   (payload, sentStatus) => async (dispatch, getState) => {
     const socket = getState().user.socket;
     try {
+      //. if it is a sent message
       if (sentStatus) {
+        //. send API request to delete message
         const deleteChatItem = await apiUpdateDeleteStatus(payload._id);
+        console.log("deletemessage - sent true payload", deleteChatItem);
         if (!deleteChatItem.data.success) throw deleteChatItem;
-        console.log(
-          "🚀 ~ file: action.js:119 ~ deleteMessage ~ deleteChatItem",
-          deleteChatItem
-        );
+        //. update local state for deletion of message
         dispatch({
           type: DELETE_MESSAGE,
           payload: deleteChatItem.data.data,
         });
+        //. send read notice back to the other person
         socket.emit("send-delete-notice", payload);
       } else {
+        //. else, if if its an unsent message
+        console.log("deletemessage - sent false payload", payload);
+        //. update local state to remove the message directly
         dispatch({
           type: DELETE_MESSAGE_UNSENT,
           payload,
@@ -332,13 +363,5 @@ export const deleteMessageNotice = (payload) => async (dispatch, getState) => {
     });
   } catch (error) {
     console.log("error saat delete message receipt", error);
-  }
-};
-
-const updateReadStatus = async (payload) => {
-  try {
-    const updateMessage = await apiUpdateReadStatus();
-  } catch (error) {
-    console.log("error sewaktu update read status");
   }
 };

@@ -12,7 +12,7 @@ export const connectSocket = () => async (dispatch, getState) => {
   const currentTimestamp = new Date().getTime() / 1000;
   try {
     if (isLoggedIn) {
-      const socket = io("http://192.168.8.108:3036", {
+      const socket = io("http://192.168.1.30:3036", {
         query: { username, timestamp: currentTimestamp },
       });
       socket.on("connect", () => {

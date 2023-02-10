@@ -5,11 +5,10 @@ import ChatItem from "../components/ChatItem";
 import { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  deleteMessage,
   deleteMessageNotice,
   receiveMessage,
-  updateReadNotice,
   sendMessage,
+  updateReadNotice,
 } from "../actions/action";
 import { connectSocket, closeSocket, offSocket } from "../actions/action.auth";
 
@@ -35,14 +34,13 @@ export default function ChatRoom() {
   useEffect(() => {
     if (socket) {
       socket.on("receive-chat", (payload) => {
-        console.log("payload masuk receive chat", payload);
         dispatch(receiveMessage(payload));
       });
       socket.on("receive-delete-notice", (payload) => {
         console.log("payload dari send-delete-notice", payload);
         dispatch(deleteMessageNotice(payload));
       });
-      socket.on("receive-read-notice", (payload) => {
+      socket.on("receive-read-notice", ({sentID, receiverID, payload}) => {
         console.log("payload dari receive-read-notice", payload);
         dispatch(updateReadNotice(payload));
       });
@@ -75,15 +73,6 @@ export default function ChatRoom() {
     console.log("check payload", payload);
     console.log("check db", db);
     console.log("check user", user);
-  };
-
-  const removeMessage = (_id, sentStatus) => {
-    const payload = {
-      _id,
-      receiverID: db.selectedContact.username,
-      chatID: db.selectedChat._id,
-    };
-    dispatch(deleteMessage(payload, sentStatus));
   };
 
   return (
@@ -120,27 +109,21 @@ export default function ChatRoom() {
                   {broadcastID && (
                     <ChatAddMe addMe={() => addMe(broadcastID)} />
                   )} */}
-                  {
-                    // showMessage &&
-                    db.selectedChat.conversation.map((item, index) => {
-                      return (
-                        <ChatItem
-                          key={index}
-                          _id={item._id}
-                          message={item.message}
-                          sentID={item.sentID}
-                          receiverID={item.receiverID}
-                          sentStatus={item.sentStatus}
-                          readStatus={item.readStatus}
-                          deleteStatus={item.deleteStatus}
-                          sentTime={item.createdAt}
-                          removeMessage={() =>
-                            removeMessage(item._id, item.sentStatus)
-                          }
-                        />
-                      );
-                    })
-                  }
+                  {db.selectedChat.conversation.map((item, index) => {
+                    return (
+                      <ChatItem
+                        key={index}
+                        _id={item._id}
+                        message={item.message}
+                        sentID={item.sentID}
+                        receiverID={item.receiverID}
+                        sentStatus={item.sentStatus}
+                        readStatus={item.readStatus}
+                        deleteStatus={item.deleteStatus}
+                        sentTime={item.createdAt}
+                      />
+                    );
+                  })}
                 </div>
                 <div className="form-group mb-0 bg-white rounded">
                   <form className="w-auto" onSubmit={handleSubmit}>

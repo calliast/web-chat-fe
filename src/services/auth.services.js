@@ -2,7 +2,7 @@ import axios from "axios";
 import { authHeader } from "../helpers/utils";
 
 export const api = axios.create({
-  baseURL: "http://192.168.8.108:3036",
+  baseURL: "http://192.168.1.30:3036",
   timout: 3000,
   headers: authHeader(),
 });

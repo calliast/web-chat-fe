@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useCallback, useRef, useState } from "react";
 import Markdown from "markdown-to-jsx";
 import { useDispatch, useSelector } from "react-redux";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -9,11 +9,12 @@ import {
   faTrash,
   faUndo,
 } from "@fortawesome/free-solid-svg-icons";
-import { resendMessageRedux } from "../actions/action";
+import { deleteMessage, resendMessageRedux } from "../actions/action";
 import moment from "moment";
 
 export default function ChatItem(props) {
   const user = useSelector((state) => state.user);
+  const db = useSelector(state => state.db)
   const dispatch = useDispatch();
   const isSentID = props.sentID === user._id;
   const messagePosition = isSentID ? " align-self-end" : "";
@@ -34,18 +35,27 @@ export default function ChatItem(props) {
     );
   };
 
+  const removeMessage = useCallback(() => {
+    const payload = {
+      _id: props._id,
+      receiverID: db.selectedContact.username,
+      chatID: db.selectedChat._id,
+    };
+    dispatch(deleteMessage(payload, props.sentStatus));
+  }, [props._id, props.sentStatus, db.selectedContact.username])
+
   return (
     <Fragment>
       <div
         className={`px-3 ${messagePosition} d-flex`}
         style={{ maxWidth: "60vw" }}
       >
-        {isSentID && isButtonVisible && (
+        {isSentID && !props.deleteStatus && isButtonVisible && (
           <button
             className="btn bg-white rounded-circle border-0"
             onMouseEnter={() => setIsButtonVisible(true)}
             onMouseLeave={() => setIsButtonVisible(false)}
-            onClick={props.removeMessage}
+            onClick={() => removeMessage()}
           >
             <FontAwesomeIcon icon={faTrash} color="grey" />
           </button>

@@ -1,5 +1,4 @@
 import {
-  ADD_CONTACT_FAILED,
   ADD_CONTACT_SUCCESS,
   RECEIVE_NEW_MESSAGE,
   SEND_NEW_MESSAGE_BE_SUCCESS,
@@ -14,8 +13,8 @@ import {
   RESEND_MESSAGE,
   SEND_MESSAGE_SOCKET,
   DELETE_MESSAGE_UNSENT,
-  SEND_READ_NOTICE,
   UPDATE_READ_NOTICE,
+  UPDATE_READ_STATUS,
   CLEAN_UP_SESSION,
 } from "../actions/types";
 
@@ -79,7 +78,10 @@ export default function dbReducer(state = initialState, action) {
         ],
       };
     case SELECT_CONTACT:
-      console.log(payload, "payload di reducer select");
+      console.log(
+        "selectcontact - reducer - berikut adalah payload ketika select contact",
+        payload
+      );
       return {
         ...state,
         selectedContact: payload.contact,
@@ -118,7 +120,10 @@ export default function dbReducer(state = initialState, action) {
         }),
       };
     case SEND_NEW_MESSAGE_BE_SUCCESS:
-      console.log(payload, "payload_reducer_send_message_BE_SUCCESS");
+      console.log(
+        "sendmessage - reducer - berikut adalah payload ketika sendmessage berhasil",
+        payload
+      );
       return {
         ...state,
         selectedChat: {
@@ -136,7 +141,7 @@ export default function dbReducer(state = initialState, action) {
           }),
         },
         chat: state.chat.map((item) => {
-          if (item._id === payload.response._id) {
+          if (item._id === payload.response.chat._id) {
             return {
               ...item,
               conversation: item.conversation.map((item) => {
@@ -183,7 +188,10 @@ export default function dbReducer(state = initialState, action) {
         }),
       };
     case RESEND_MESSAGE:
-      console.log(payload, "payload_reducer_send_message_BE_SUCCESS");
+      console.log(
+        "resendmessage - reducer - berikut adalah payload ketika resend message",
+        payload
+      );
       return {
         ...state,
         selectedChat: {
@@ -198,13 +206,16 @@ export default function dbReducer(state = initialState, action) {
         },
         chat: state.chat.map((item) => {
           if (item._id === payload.response._id) {
-            console.log("item convo lv 1", item);
+            console.log("resendmessage - reducer - item convo lv 1", item);
             return {
               ...item,
               conversation: item.conversation.map((item) => {
-                console.log("item convo lv 2", item);
+                console.log("resendmessage - reducer - item convo lv 2", item);
                 if (item._id === payload.messageID) {
-                  console.log("item convo lv 3", item);
+                  console.log(
+                    "resendmessage - reducer - item convo lv 3",
+                    item
+                  );
                   item._id = payload.response.message._id;
                   item.sentStatus = true;
                 }
@@ -216,7 +227,10 @@ export default function dbReducer(state = initialState, action) {
         }),
       };
     case RECEIVE_NEW_MESSAGE:
-      console.log(payload, "payload waktu received new message");
+      console.log(
+        "receive message - reducer - berikut adalah payload",
+        payload
+      );
       if (state.selectedChat._id === payload.chatID) {
         return {
           ...state,
@@ -227,8 +241,34 @@ export default function dbReducer(state = initialState, action) {
               { ...payload.message },
             ],
           },
+          // contacts: state.contacts.map((contact) => {
+          //   if (contact._id === payload.message.sentID) {
+          //     contact.unreadCount += 1;
+          //     return contact;
+          //   }
+          //   return contact;
+          // }),
+          chat: state.chat.map((item) => {
+            if (item._id === payload.chatID) {
+              return {
+                ...item,
+                conversation: [
+                  ...item.conversation,
+                  {
+                    ...payload.message,
+                  },
+                ],
+              };
+            }
+            return item;
+          }),
+        };
+      } else {
+        // console.log('user sedang tidak melihat chat yang sama', payload)
+        return {
+          ...state,
           contacts: state.contacts.map((contact) => {
-            if (contact._id === state.selectedContact._id) {
+            if (contact._id === payload.message.sentID) {
               contact.unreadCount += 1;
               return contact;
             }
@@ -249,33 +289,9 @@ export default function dbReducer(state = initialState, action) {
             return item;
           }),
         };
-      } else {
-        return {
-          ...state,
-          contacts: state.contacts.map(contact => {
-            if (contact._id === payload.message.sentID) {
-              contact.unreadCount += 1;
-              return contact
-            }
-            return contact
-          }),
-          chat: state.chat.map((item) => {
-            if (item._id === payload.chatID) {
-              return {
-                ...item,
-                conversation: [
-                  ...item.conversation,
-                  {
-                    ...payload.message,
-                  },
-                ],
-              };
-            }
-            return item;
-          }),
-        };
       }
     case DELETE_MESSAGE:
+      console.log("deletemessage - reducer - payload", payload);
       return {
         ...state,
         selectedChat: {
@@ -383,8 +399,11 @@ export default function dbReducer(state = initialState, action) {
           }),
         };
       }
-    case UPDATE_READ_NOTICE:
-      console.log(payload, "receive read notice");
+    case UPDATE_READ_STATUS:
+      console.log(
+        "updatereadnotice - reducer - berikut adalah payload yang akan diupdate",
+        payload
+      );
       return {
         ...state,
         selectedChat: {
@@ -393,7 +412,11 @@ export default function dbReducer(state = initialState, action) {
             let newMessage = {};
             payload.newMessageIDs.forEach((newData) => {
               if (message._id === newData._id) {
-                newMessage = { ...message, ...newData };
+                newMessage = {
+                  ...message,
+                  ...newData,
+                  readStatus: newData.readStatus,
+                };
               }
             });
             if (Object.keys(newMessage).length) {
@@ -417,7 +440,11 @@ export default function dbReducer(state = initialState, action) {
                 let newMessage = {};
                 payload.newMessageIDs.forEach((newData) => {
                   if (message._id === newData._id) {
-                    newMessage = { ...message, ...newData };
+                    newMessage = {
+                      ...message,
+                      ...newData,
+                      readStatus: newData.readStatus,
+                    };
                   }
                 });
                 if (Object.keys(newMessage).length) {
@@ -430,9 +457,84 @@ export default function dbReducer(state = initialState, action) {
           return item;
         }),
       };
+      case UPDATE_READ_NOTICE:
+        if (state.selectedChat._id === payload.chatID) {
+          return {
+            ...state,
+            selectedChat: {
+              ...state.selectedChat,
+              conversation: state.selectedChat.conversation.map((message) => {
+                let newMessage = {};
+                payload.newMessageIDs.forEach((newData) => {
+                  if (message._id === newData._id) {
+                    newMessage = {
+                      ...message,
+                      ...newData,
+                      readStatus: newData.readStatus,
+                    };
+                  }
+                });
+                if (Object.keys(newMessage).length) {
+                  return newMessage;
+                }
+                return message;
+              }),
+            },
+            chat: state.chat.map((item) => {
+              if (item._id === payload.chatID) {
+                return {
+                  ...item,
+                  conversation: item.conversation.map((message) => {
+                    let newMessage = {};
+                    payload.newMessageIDs.forEach((newData) => {
+                      if (message._id === newData._id) {
+                        newMessage = {
+                          ...message,
+                          ...newData,
+                          readStatus: newData.readStatus,
+                        };
+                      }
+                    });
+                    if (Object.keys(newMessage).length) {
+                      return newMessage;
+                    }
+                    return message;
+                  }),
+                };
+              }
+              return item;
+            }),
+          };
+        } else {
+          return  {
+            ...state,
+            chat: state.chat.map((item) => {
+              if (item._id === payload.chatID) {
+                return {
+                  ...item,
+                  conversation: item.conversation.map((message) => {
+                    let newMessage = {};
+                    payload.newMessageIDs.forEach((newData) => {
+                      if (message._id === newData._id) {
+                        newMessage = {
+                          ...message,
+                          ...newData,
+                          readStatus: newData.readStatus,
+                        };
+                      }
+                    });
+                    if (Object.keys(newMessage).length) {
+                      return newMessage;
+                    }
+                    return message;
+                  }),
+                };
+              }
+              return item;
+            }),
+          }
+        }
     case SEND_MESSAGE_SOCKET:
-      return state;
-    case SEND_READ_NOTICE:
       return state;
     case CLEAN_UP_SESSION:
       return {

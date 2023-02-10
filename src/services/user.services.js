@@ -10,5 +10,7 @@ export const apiSendMessage = (params, payload) =>
 export const apiUpdateReadStatus = (messageIDs) =>
   api.put(`/chat/message/status`, { messageIDs });
 
-export const apiUpdateDeleteStatus = (messageID) =>
-  api.delete(`/chat/message/status/`, { _id: messageID });
+export const apiUpdateDeleteStatus = (messageID) => {
+  console.log("apidelete - message id saat mau request", messageID);
+  return api.delete(`/chat/message/${messageID}`);
+};
