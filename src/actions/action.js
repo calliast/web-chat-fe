@@ -82,7 +82,7 @@ export const addContact =
         payload: {
           contact: getContact.data.data.contact,
           chat: getContact.data.data.chat,
-          isNew,
+          isNew
         },
       });
     } catch (error) {
@@ -229,30 +229,31 @@ export const resendMessageRedux =
   };
 
 export const receiveMessage = (payload) => async (dispatch, getState) => {
+  console.log("🚀 ~ file: action.js:232 ~ receiveMessage ~ payload", payload)
   const user = getState().user
   const db = getState().db;
   const chatID = payload.chatID;
   delete payload.chatID;
   try {
     //. Check if contact exist in contact list
-    const checkContact = db.contacts.filter((item) => item.username === payload.sentID);
-    if (checkContact.length === 0) {
+    if (db.contacts.filter((item) => item.username === payload.sentID).length === 0) {
       // if no, then add as new contact
-      dispatch(addContact(payload.sentID, chatID, true));
+      //. this way, contact info as well as the latest message will be included in the addContact payload automatically
+      await dispatch(addContact(payload.sentID, chatID, true));
+    } else {
+      
+      payload.receiverID = user._id
+  
+      //. Dispatch an action to update state with the new message,
+      dispatch({
+        type: RECEIVE_NEW_MESSAGE,
+        payload: {
+          message: payload,
+          chatID,
+        },
+      });
     }
 
-    //. Replace payload's username with IDs
-    payload.receiverID = user._id
-    payload.sentID = checkContact[0]._id
-
-    //. Dispatch an action to update state with the new message,
-    dispatch({
-      type: RECEIVE_NEW_MESSAGE,
-      payload: {
-        message: payload,
-        chatID,
-      },
-    });
 
     //. Check if user currently seeing the same chatID where message intended on being delivered to,
     if (db.selectedChat._id === chatID) {

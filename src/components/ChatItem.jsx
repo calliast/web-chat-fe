@@ -79,7 +79,7 @@ export default function ChatItem(props) {
           >
             <Markdown
               children={props.message}
-              className={`${props.message.length > 34 ? '': 'mx-2 '}${props.deleteStatus ? `grey` : textColor}`}
+              className={`${props.message.length > 34 ? '': 'mx-2 '}${textColor}`}
               style={{ fontSize: "14px", maxWidth: "32vw" }}
             ></Markdown>
             <div className="d-flex flex-row-reverse">

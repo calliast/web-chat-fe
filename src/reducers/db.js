@@ -227,11 +227,13 @@ export default function dbReducer(state = initialState, action) {
         }),
       };
     case RECEIVE_NEW_MESSAGE:
-      console.log(
-        "receive message - reducer - berikut adalah payload",
-        payload
-      );
+      state.contacts.forEach((contact) => {
+        if (contact.username === payload.message.sentID) {
+          payload.message.sentID = contact._id
+        }
+      })
       if (state.selectedChat._id === payload.chatID) {
+        console.log('receivemessage - reducer - user sedang melihat chatID yang sama', payload)
         return {
           ...state,
           selectedChat: {
@@ -241,13 +243,6 @@ export default function dbReducer(state = initialState, action) {
               { ...payload.message },
             ],
           },
-          // contacts: state.contacts.map((contact) => {
-          //   if (contact._id === payload.message.sentID) {
-          //     contact.unreadCount += 1;
-          //     return contact;
-          //   }
-          //   return contact;
-          // }),
           chat: state.chat.map((item) => {
             if (item._id === payload.chatID) {
               return {
@@ -264,7 +259,7 @@ export default function dbReducer(state = initialState, action) {
           }),
         };
       } else {
-        // console.log('user sedang tidak melihat chat yang sama', payload)
+        console.log('receivemessage - reducer - user sedang tidak melihat chat yang sama', payload)
         return {
           ...state,
           contacts: state.contacts.map((contact) => {
@@ -276,6 +271,7 @@ export default function dbReducer(state = initialState, action) {
           }),
           chat: state.chat.map((item) => {
             if (item._id === payload.chatID) {
+              console.log("receivemessage - reducer - sedang memasukkan payload", payload)
               return {
                 ...item,
                 conversation: [
@@ -401,7 +397,7 @@ export default function dbReducer(state = initialState, action) {
       }
     case UPDATE_READ_STATUS:
       console.log(
-        "updatereadnotice - reducer - berikut adalah payload yang akan diupdate",
+        "updatereadstatus - reducer - berikut adalah payload yang akan diupdate",
         payload
       );
       return {
@@ -427,7 +423,8 @@ export default function dbReducer(state = initialState, action) {
         },
         contacts: state.contacts.map((contact) => {
           if (contact._id === state.selectedContact._id) {
-            contact.unreadCount -= payload.newMessageIDs.length;
+            console.log("updatereadstatus - reducer - ini jumlah unreadCount", contact.unreadCount)
+            contact.unreadCount = 0;
             return contact;
           }
           return contact;
