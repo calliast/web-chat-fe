@@ -5,16 +5,17 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheck,
   faCheckDouble,
+  faExclamation,
   faExclamationCircle,
   faTrash,
   faUndo,
 } from "@fortawesome/free-solid-svg-icons";
-import { deleteMessage, resendMessageRedux } from "../actions/action";
+import { resendMessageRedux } from "../actions/action";
 import moment from "moment";
 
 export default function ChatItem(props) {
   const user = useSelector((state) => state.user);
-  const db = useSelector(state => state.db)
+  const db = useSelector((state) => state.db);
   const dispatch = useDispatch();
   const isSentID = props.sentID === user._id;
   const messagePosition = isSentID ? " align-self-end" : "";
@@ -35,14 +36,22 @@ export default function ChatItem(props) {
     );
   };
 
-  const removeMessage = useCallback(() => {
-    const payload = {
-      _id: props._id,
-      receiverID: db.selectedContact.username,
-      chatID: db.selectedChat._id,
-    };
-    dispatch(deleteMessage(payload, props.sentStatus));
-  }, [props._id, props.sentStatus, db.selectedContact.username])
+  const handleSetRemoveMessageID = useCallback(() => {
+    props.handleRemove((prevState) => {
+      return {
+        _id: props._id,
+        message: props.message,
+        receiverID: db.selectedContact.username,
+        chatID: db.selectedChat._id,
+        sentStatus: props.sentStatus,
+      };
+    });
+  }, [
+    props._id,
+    props.sentStatus,
+    db.selectedContact.username,
+    db.selectedChat._id,
+  ]);
 
   return (
     <Fragment>
@@ -55,31 +64,38 @@ export default function ChatItem(props) {
             className="btn bg-white rounded-circle border-0"
             onMouseEnter={() => setIsButtonVisible(true)}
             onMouseLeave={() => setIsButtonVisible(false)}
-            onClick={() => removeMessage()}
+            onClick={handleSetRemoveMessageID}
+            data-bs-toggle="modal"
+            data-bs-target="#deleteMessage"
           >
             <FontAwesomeIcon icon={faTrash} color="grey" />
           </button>
         )}
-        {isSentID && !props.sentStatus && (
+        {isSentID && !props.deleteStatus && !props.sentStatus && (
           <button
             className="btn bg-white rounded-circle border-0"
             onMouseEnter={() => setIsButtonVisible(true)}
             onMouseLeave={() => setIsButtonVisible(false)}
             onClick={() => resendMessage()}
+            title="Resend this message"
           >
             <FontAwesomeIcon icon={faUndo} color="grey" />
           </button>
         )}
         <div className="d-inline-block my-1">
           <div
-            className={`d-flex ${props.message.length > 34 ? 'flex-column': 'flex-row'} px-3 py-2 border-0${messageColor}`}
+            className={`d-flex ${
+              props.message.length > 34 ? "flex-column" : "flex-row"
+            } px-2 py-2 border-0${messageColor}`}
             style={{ borderRadius: 10 }}
             onMouseEnter={() => setIsButtonVisible(true)}
             onMouseLeave={() => setIsButtonVisible(false)}
           >
             <Markdown
               children={props.message}
-              className={`${props.message.length > 34 ? '': 'mx-2 '}${textColor}`}
+              className={`${
+                props.message.length > 34 ? "mx-2 " : "mx-2 "
+              }${textColor}`}
               style={{ fontSize: "14px", maxWidth: "32vw" }}
             ></Markdown>
             <div className="d-flex flex-row-reverse">
@@ -87,7 +103,6 @@ export default function ChatItem(props) {
                 <>
                   <div
                     className="bg-blue rounded-circle border-0 align-self-end p-2"
-                    onClick={() => resendMessage()}
                     style={{
                       display: "flex",
                       justifyContent: "center",
@@ -107,7 +122,6 @@ export default function ChatItem(props) {
               )}
               <div
                 className="rounded-circle border-0 align-self-end p-2 mx-2"
-                onClick={() => resendMessage()}
                 style={{
                   display: "flex",
                   width: "1em",
@@ -125,8 +139,8 @@ export default function ChatItem(props) {
           </div>
         </div>
         {isSentID && !props.sentStatus && (
-          <div className="btn bg-white rounded-circle border-0">
-            <FontAwesomeIcon icon={faExclamationCircle} color="orange" />
+          <div className="btn pt-2 bg-white rounded-circle border-0 align-items-center">
+            <FontAwesomeIcon icon={faExclamation} color="orange" className="fa-lg"/>
           </div>
         )}
       </div>

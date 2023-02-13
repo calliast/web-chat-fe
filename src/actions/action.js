@@ -59,7 +59,9 @@ export const loadUserData = () => async (dispatch, getState) => {
       });
     }
   } catch (error) {
-    console.log("error saat load user data", error);
+    console.log(
+      `LOAD USER DATA FAILED\nError\t: ${error.name}\nCode\t: ${error.code}\nMessage\t: ${error.message}`
+    );
     dispatch({
       type: LOAD_USER_DATA_FAILED,
       error,
@@ -68,7 +70,7 @@ export const loadUserData = () => async (dispatch, getState) => {
 };
 
 export const addContact =
-  (contactUsername, chatID = null, isNew = null) =>
+  (contactUsername, chatID = null, isUnknownContact = null) =>
   async (dispatch, getState) => {
     const username = getState().user.username;
     try {
@@ -82,7 +84,7 @@ export const addContact =
         payload: {
           contact: getContact.data.data.contact,
           chat: getContact.data.data.chat,
-          isNew
+          isUnknownContact,
         },
       });
     } catch (error) {
@@ -174,7 +176,9 @@ export const sendMessage = (payload) => async (dispatch, getState) => {
     //. Send Message through socket.io
     dispatch(sendMessageSocket(newPayload));
   } catch (error) {
-    console.log("error saat sendMessage", error);
+    console.log(
+      `SEND MESSAGE FAILED\nError\t: ${error.name}\nCode\t: ${error.code}\nMessage\t: ${error.message}`
+    );
     newPayload.sentStatus = false;
     dispatch({
       type: SEND_NEW_MESSAGE_BE_FAILED,
@@ -201,7 +205,7 @@ const sendMessageSocket = (payload) => async (dispatch, getState) => {
       type: SEND_MESSAGE_SOCKET,
     });
   } catch (error) {
-    console.log("error saat sendMessageSocket", error);
+    console.log("SEND MESSAGE SOCKET FAILED", error);
   }
 };
 
@@ -224,26 +228,28 @@ export const resendMessageRedux =
       //. Send Message through socket.io
       dispatch(sendMessageSocket(payload));
     } catch (error) {
-      console.log("error saat resend message", error);
+      console.log("RESEND MESSAGE FAILED", error);
     }
   };
 
 export const receiveMessage = (payload) => async (dispatch, getState) => {
-  console.log("🚀 ~ file: action.js:232 ~ receiveMessage ~ payload", payload)
-  const user = getState().user
+  console.log("🚀 ~ file: action.js:232 ~ receiveMessage ~ payload", payload);
+  const user = getState().user;
   const db = getState().db;
   const chatID = payload.chatID;
   delete payload.chatID;
   try {
     //. Check if contact exist in contact list
-    if (db.contacts.filter((item) => item.username === payload.sentID).length === 0) {
+    if (
+      db.contacts.filter((item) => item.username === payload.sentID).length ===
+      0
+    ) {
       // if no, then add as new contact
       //. this way, contact info as well as the latest message will be included in the addContact payload automatically
       await dispatch(addContact(payload.sentID, chatID, true));
     } else {
-      
-      payload.receiverID = user._id
-  
+      payload.receiverID = user._id;
+
       //. Dispatch an action to update state with the new message,
       dispatch({
         type: RECEIVE_NEW_MESSAGE,
@@ -254,13 +260,12 @@ export const receiveMessage = (payload) => async (dispatch, getState) => {
       });
     }
 
-
     //. Check if user currently seeing the same chatID where message intended on being delivered to,
     if (db.selectedChat._id === chatID) {
       dispatch(updateReadStatus([payload._id]));
     }
   } catch (error) {
-    console.log("error saat receive message", error);
+    console.log("ERROR OCCURED WHEN RECEIVING MESSAGE", error);
   }
 };
 
@@ -271,13 +276,9 @@ export const updateReadStatus = (messageIDs) => async (dispatch, getState) => {
     "updatereadnotice - berikut id message yang akan di update read statusnya",
     messageIDs
   );
-  // let newMessageIDs = messageIDs;
   try {
-    // if (isReceiver) {
     const updatedMessageIDs = await apiUpdateReadStatus(messageIDs);
     if (!updatedMessageIDs.data.success) throw updatedMessageIDs;
-    // newMessageIDs = updatedMessageIDs.data.data;
-    // }
 
     dispatch({
       type: UPDATE_READ_STATUS,
@@ -286,7 +287,6 @@ export const updateReadStatus = (messageIDs) => async (dispatch, getState) => {
       },
     });
 
-    // if (isReceiver) {
     const newPayload = {
       sentID: getState().user.username,
       receiverID: getState().db.selectedContact.username,
@@ -296,11 +296,9 @@ export const updateReadStatus = (messageIDs) => async (dispatch, getState) => {
       },
     };
 
-    // dispatch(updateReadNotice(messageIDs));
     socket.emit("send-read-notice", newPayload);
-    // }
   } catch (error) {
-    console.log("ini error saat receive read notice", error);
+    console.log("ERROR WHEN UPDATING READ STATUS", error);
   }
 };
 
@@ -314,10 +312,10 @@ export const updateReadNotice = (payload) => async (dispatch, getState) => {
   try {
     dispatch({
       type: UPDATE_READ_NOTICE,
-      payload
-    })
+      payload,
+    });
   } catch (error) {
-    console.log("ini error saat send read notif", error);
+    console.log("ERROR WHEN SENDING READ NOTICE", error);
   }
 };
 
@@ -348,7 +346,7 @@ export const deleteMessage =
         });
       }
     } catch (error) {
-      console.log("error saat delete message", error);
+      console.log("ERROR WHEN DELETING MESSAGE", error);
       dispatch({
         type: DELETE_MESSAGE_FAILED,
         error,
@@ -363,6 +361,6 @@ export const deleteMessageNotice = (payload) => async (dispatch, getState) => {
       payload,
     });
   } catch (error) {
-    console.log("error saat delete message receipt", error);
+    console.log("ERROR WHEN SENDING DELETE NOTICE", error);
   }
 };

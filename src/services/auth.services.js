@@ -18,35 +18,36 @@ const userSignIn = async ({ username }) => {
     console.log(
       `SERVICE AUTH FAILED\nError\t: ${error.name}\nCode\t: ${error.code}\nMessage\t: ${error.message}`
     );
-    console.log("ini config", error.config);
+    // console.log("ini config", error.config);
     return error;
   }
 };
 
 const userSignOut = async () => {
   try {
-    const { data: response } = await api.post("/api/auth/signout");
-
-    if (!response.success) throw response;
-    setAuthentication(null, "remove");
+    const response = await api.post("/api/auth/signout");
+    
+    if (!response.data.success) throw response;
+    setAuthentication(null, false);
     return response;
   } catch (error) {
     console.log(
       `SERVICE AUTH FAILED\nError\t: ${error.name}\nCode\t: ${error.code}\nMessage\t: ${error.message}`
     );
-    console.log("error saat request", error.request);
-    setAuthentication(null, "remove");
+    // console.log("error saat signout request", error);
+    setAuthentication(null, false);
 
     return error;
   }
 };
 
-const setAuthentication = (data, set = "set") => {
-  set === "set"
+const setAuthentication = (data, set = true) => {
+  set
     ? localStorage.setItem("user-data", JSON.stringify(data))
     : localStorage.removeItem("user-data");
-  return (api.defaults.headers.common["Authorization"] =
-    data.token === null ? null : `Bearer ${data.token}`);
+  return (api.defaults.headers.common["Authorization"] = data
+    ? `Bearer ${data?.token}`
+    : null);
 };
 
 export default {

@@ -1,27 +1,34 @@
-import { Fragment, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import ChatItem from "../components/ChatItem";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback, Fragment, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   deleteMessageNotice,
   receiveMessage,
   sendMessage,
   updateReadNotice,
+  deleteMessage,
 } from "../actions/action";
 import { connectSocket, closeSocket, offSocket } from "../actions/action.auth";
 
 export default function ChatRoom() {
   const newMessageSent = useRef(null);
-  const [newMessage, setNewMessage] = useState("");
   const dispatch = useDispatch();
+  const [newMessage, setNewMessage] = useState("");
+  const [removeMessageID, setRemoveMessageID] = useState({
+    _id: "",
+    message: "",
+    receiverID: "",
+    chatID: "",
+    sentStatus: "",
+  });
   const db = useSelector((state) => state.db);
-  const user = useSelector((state) => state.user);
-  const socket = useSelector((state) => state.user.socket);
+  const { socket } = useSelector((state) => state.user);
   let run = 0;
 
   useEffect(() => {
+    console.log("run render");
     if (run === 1) {
       dispatch(connectSocket());
       return () => {
@@ -40,7 +47,7 @@ export default function ChatRoom() {
         console.log("payload dari send-delete-notice", payload);
         dispatch(deleteMessageNotice(payload));
       });
-      socket.on("receive-read-notice", ({sentID, receiverID, payload}) => {
+      socket.on("receive-read-notice", ({ payload }) => {
         console.log("payload dari receive-read-notice", payload);
         dispatch(updateReadNotice(payload));
       });
@@ -64,51 +71,52 @@ export default function ChatRoom() {
     newMessageSent.current.scrollIntoView({ smooth: true });
   };
 
-  const test = () => {
+  const handleRemoveMessage = useCallback(() => {
     const payload = {
-      message: newMessage,
-      sentID: user.username,
-      receiverID: db.selectedContact,
+      _id: removeMessageID._id,
+      receiverID: removeMessageID.receiverID,
+      chatID: removeMessageID.chatID,
     };
-    console.log("check payload", payload);
-    console.log("check db", db);
-    console.log("check user", user);
-  };
+    dispatch(deleteMessage(payload, removeMessageID.sentStatus));
+    setTimeout(() => {
+      setRemoveMessageID({
+        _id: "",
+        message: "",
+        receiverID: "",
+        chatID: "",
+        sentStatus: "",
+      });
+    }, 500);
+  }, [removeMessageID, dispatch]);
 
   return (
     <Fragment>
-      <div className="col-8 bg-white">
-        <div className="card border-0 mw-100">
-          <div className="card-header text-center border-0">
-            <h2 className="p-3">
-              {db.selectedContact?.username
-                ? db.selectedContact?.username
-                : "Receiver Username"}
-            </h2>
-          </div>
-          <button type="button" onClick={test} className="btn btn-secondary">
-            test
-          </button>
+      <div
+        className="card mw-100 mh-100 border-0"
+        style={{ height: "15vh", maxHeight: "15vh" }}
+      >
+        <div className="card-header bg-grey d-flex justify-content-center align-items-center border-0 h-100 rounded-3 border-0">
+          <h1>
+            {db.selectedContact?.username
+              ? db.selectedContact?.username
+              : "Receiver Name"}
+          </h1>
         </div>
-        <div className="card mt-4 border-0 mw-100 bg-grey">
-          <div className="card-body p-2">
+      </div>
+      <div
+        className="card mw-100 mh-100 border-0"
+        style={{ height: "77vh", maxHeight: "77vh", marginTop: "4vh" }}
+      >
+        <div className="card-body bg-grey rounded-4 border-0">
+          <div className="bg-white bg-white rounded-4 border-0">
             {db.selectedContact._id ? (
               <>
                 <div
                   id="chat-room"
-                  className="d-flex flex-column border-0 rounded bg-white"
-                  style={{
-                    overflowY: "scroll",
-                    height: 480,
-                    minHeight: "40vh",
-                    maxHeight: "70vh",
-                  }}
+                  className="d-flex flex-column overflow-auto"
+                  style={{ height: "63vh" }}
                   ref={newMessageSent}
                 >
-                  {/* {notify && <ChatItem message={notify} />}
-                  {broadcastID && (
-                    <ChatAddMe addMe={() => addMe(broadcastID)} />
-                  )} */}
                   {db.selectedChat.conversation.map((item, index) => {
                     return (
                       <ChatItem
@@ -121,6 +129,7 @@ export default function ChatRoom() {
                         readStatus={item.readStatus}
                         deleteStatus={item.deleteStatus}
                         sentTime={item.createdAt}
+                        handleRemove={setRemoveMessageID}
                       />
                     );
                   })}
@@ -153,12 +162,7 @@ export default function ChatRoom() {
             ) : (
               <div
                 className="d-flex flex-column border-0 rounded bg-white align-items-center justify-content-center"
-                style={{
-                  overflowY: "scroll",
-                  height: 550,
-                  // minHeight: "40vh",
-                  // maxHeight: "100vh",
-                }}
+                style={{ height: "73vh" }}
               >
                 <h6 className="lead text-secondary">
                   <em>Select chat to start messaging</em>
@@ -168,18 +172,45 @@ export default function ChatRoom() {
           </div>
         </div>
       </div>
-      <div className="modal fade" id="addme">
+      <div className="modal fade" id="deleteMessage">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-header">
-              <h4>New contact</h4>
+              <h4>Delete confirmation</h4>
             </div>
-            <div className="modal-body">Add into contact list?</div>
+            <div className="modal-body d-flex flex-column justify-content-between align-items-center">
+              <span>Are you sure you want to delete this message?</span>
+              <div
+                className={`bg-blue text-white px-5 py-2 my-1 rounded-2${
+                  removeMessageID.message ? `` : ` visually-hidden`
+                }`}
+              >
+                {removeMessageID.message}
+              </div>
+            </div>
             <div className="modal-footer">
-              <button className="btn btn-primary" onClick={test}>
+              <button
+                className="btn bg-blue text-white text-wrap"
+                data-bs-dismiss="modal"
+                onClick={handleRemoveMessage}
+              >
                 Yes
               </button>
-              <button className="btn btn-secondary" data-bs-dismiss="modal">
+              <button
+                className="btn btn-secondary"
+                data-bs-dismiss="modal"
+                onClick={() =>
+                  setTimeout(() => {
+                    setRemoveMessageID({
+                      _id: "",
+                      message: "",
+                      receiverID: "",
+                      chatID: "",
+                      sentStatus: "",
+                    });
+                  }, 500)
+                }
+              >
                 No
               </button>
             </div>

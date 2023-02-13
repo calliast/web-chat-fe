@@ -1,21 +1,15 @@
-import { Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import Login from "./components/Login";
 import ChatBox from "./components/ChatBox";
-import RequireAuth from "./auth/RequireAuth";
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route
-        path="/"
-        element={
-          <RequireAuth>
-            <ChatBox />
-          </RequireAuth>
-        }
-      />
-    </Routes>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/chat" element={<ChatBox />} />
+      </Routes>
+    </Router>
   );
 }

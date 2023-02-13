@@ -67,7 +67,7 @@ export default function dbReducer(state = initialState, action) {
             username: payload.contact.username,
             name: payload.contact.name,
             chatID: payload.chat._id,
-            unreadCount: payload.isNew ? 1 : 0,
+            unreadCount: payload.isUnknownContact ? 1 : 0,
           },
         ],
         chat: [

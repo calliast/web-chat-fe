@@ -1,33 +1,37 @@
 /* Custom styles */
-  
-  .d-flex {
-    min-height: 70vh;
-  }
 
-  .card {
-    box-shadow: 0px 0px 0px #ccc;
-  }
-  
-  .form-control {
-    background-color: transparent;
-    border-bottom: 2px solid #1c94f7;
-  }
-  .form-control:focus {
-    border-bottom-color: #1c94f7;
-    box-shadow: none;
-  }
-  .form-group {
-    padding: 16px;
-  }
+/* .d-flex {
+  min-height: 70vh;
+} */
 
-  .bg-grey {
-    background-color: #f6f6f6;
-  }
+.card {
+  box-shadow: 0px 0px 0px #ccc;
+}
 
-  .bg-blue {
-    background-color: #1c94f7;
-  }
+.form-control {
+  background-color: transparent;
+  border-bottom: 2px solid #1c94f7;
+}
+.form-control:focus {
+  border-bottom-color: #1c94f7;
+  box-shadow: none;
+}
+.form-group {
+  padding: 16px;
+}
 
-  .bg-grey-1 {
-    background-color: #c2c2c2;
-  }
+.bg-grey {
+  background-color: #f6f6f6;
+}
+
+.bg-blue {
+  background-color: #1c94f7;
+}
+
+.bg-blue:hover {
+  background-color: #1985de;
+}
+
+.bg-grey-1 {
+  background-color: #c2c2c2;
+}

@@ -1,8 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faTowerBroadcast,
-  faPlusCircle,
-} from "@fortawesome/free-solid-svg-icons";
+import { faPlusCircle } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { Fragment, useEffect, useState } from "react";
 import ContactItem from "../components/ContactItem";
@@ -16,7 +13,6 @@ export default function ContactList() {
   const dispatch = useDispatch();
   const db = useSelector((state) => state.db);
   const user = useSelector((state) => state.user);
-  const socket = useSelector((state) => state.user.socket);
 
   const [newContact, setNewContact] = useState("");
   const [contactActive, setContactActive] = useState(null);
@@ -37,41 +33,38 @@ export default function ContactList() {
     dispatch(selectContact(contact, chatID));
   };
 
-  const sendBroadcast = () => {
-    socket.emit("public-server", { id: socket.id });
-  };
-
-  const test = () => {
-    console.log(contactActive, "state selectednya public-server");
+  const handleSignOut = () => {
+    dispatch(
+      signOut(() => {
+        navigate("/", { replace: true });
+      })
+    );
   };
 
   return (
     <Fragment>
-      <div className="card mw-100 border-0">
-        <div className="card-header text-center bg-grey">
-          <h6>{user.user}</h6>
-          <h2 className="p-3" style={{ color: "#6c6665" }}>
-            Contacts
-          </h2>
+      <div className="card mw-100 mh-100 border-0">
+        <div
+          className="card-header bg-grey d-flex flex-column justify-content-center align-items-center border-0"
+          style={{ height: "15vh" }}
+        >
+          <h6 className="text-success text-decoration-underline">
+            Welcome {user.user}
+          </h6>
+          <h4 className="text-secondary">Contact List</h4>
         </div>
-        <div className="py-3 card-header">
+        <div
+          className="card-body bg-grey border-top border-bottom"
+          style={{ height: "10vh", maxHeight: "10vh" }}
+        >
           <form
-            className="input-group"
+            className="input-group bg-white"
             id="add-contact"
             onSubmit={handleAddContact}
           >
-            {/* <button
-              type="button"
-              className="btn text-white bg-blue"
-              onClick={sendBroadcast}
-              title="Broadcast your ID into Public Server"
-            >
-              <FontAwesomeIcon icon={faTowerBroadcast} />
-            </button> */}
             <input
               type="text"
-              className="form-control bg-white"
-              style={{ maxWidth: "35vh", fontSize: 16 }}
+              className="form-control"
               onChange={(e) => setNewContact(e.target.value)}
               placeholder="Insert username..."
               value={newContact}
@@ -87,16 +80,11 @@ export default function ContactList() {
             </button>
           </form>
         </div>
-      </div>
-      <div
-        className="card mw-100 border-0"
-        style={{
-          // maxWidth: "48vh",
-          height: "74vh",
-        }}
-      >
-        <div className="card-body overflow-auto bg-grey">
-          <div className="d-flex flex-column gap-1">
+        <div className="card-body bg-grey">
+          <div
+            className="d-flex flex-column overflow-auto"
+            style={{ height: "52vh", maxHeight: "52vh" }}
+          >
             {db.contacts.map((item, index) => {
               return (
                 <ContactItem
@@ -122,17 +110,13 @@ export default function ContactList() {
             })}
           </div>
         </div>
-        <div className="card-footer border-top-0 bg-grey">
-          <div className="form-group row mx-auto">
-            <button
-              className="btn btn-outline-danger border-2 rounded-2 mx-auto w-auto"
-              onClick={() => {
-                dispatch(signOut(() => navigate("/")));
-              }}
-            >
-              LOG OUT
-            </button>
-          </div>
+        <div
+          className="card-footer d-flex justify-content-center align-items-center border-0"
+          style={{ height: "15vh", maxHeight: "15vh" }}
+        >
+          <button className="btn btn-outline-danger" onClick={handleSignOut}>
+            Logout
+          </button>
         </div>
       </div>
     </Fragment>

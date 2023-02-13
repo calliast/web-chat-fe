@@ -1,12 +1,14 @@
 import { Fragment, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useNavigate, useLocation, Navigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { signIn } from "../actions/action.auth";
 import "../styles/Login.css";
 
-export default function Login(props) {
+export default function Login() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const db = useSelector((state) => state.db);
+  const { isLoggedIn } = useSelector((state) => state.user);
   let location = useLocation().state?.from?.pathname || "/";
 
   const handleSubmit = useCallback(
@@ -24,6 +26,10 @@ export default function Login(props) {
     },
     [dispatch]
   );
+
+  if (isLoggedIn) {
+    return <Navigate to="/chat" state={{ from: location }} replace />
+  }
 
   return (
     <Fragment>

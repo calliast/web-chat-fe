@@ -5,6 +5,8 @@ import {
   CONNECT_SOCKET,
   SIGN_IN_FAILED,
   SIGN_IN_SUCCESS,
+  SIGN_OUT_FAILED,
+  SIGN_OUT_SUCCESS,
 } from "./types";
 
 export const connectSocket = () => async (dispatch, getState) => {
@@ -45,11 +47,11 @@ export const offSocket = (event) => (dispatch, getState) => {
 
 export const signIn = (username, callback) => async (dispatch, getState) => {
   try {
-    const data = await Auth.userSignIn({ username });
-    if (!data?.success) throw data;
+    const request = await Auth.userSignIn({ username });
+    if (!request?.success) throw request;
     dispatch({
       type: SIGN_IN_SUCCESS,
-      payload: data.data,
+      payload: request.data,
     });
     setTimeout(callback, 100);
   } catch ({ name, message, code, config, request }) {
@@ -64,19 +66,26 @@ export const signIn = (username, callback) => async (dispatch, getState) => {
 
 export const signOut = (callback) => async (dispatch, getState) => {
   try {
-    const data = await Auth.userSignOut();
-    if (!data?.success) throw data;
-    dispatch({
+    const request = await Auth.userSignOut();
+    if (!request.data?.success) throw request;
+
+    await dispatch({
       type: CLEAN_UP_SESSION,
     });
-    setTimeout(callback, 100);
+    dispatch({
+      type: SIGN_OUT_SUCCESS,
+    });
+    setTimeout(callback, 200);
   } catch ({ name, message, code, config, request }) {
     console.log(
       `Signout failed\nError\t: ${name}\nCode\t: ${code}\nMessage\t: ${message}`
     );
-    dispatch({
+    await dispatch({
       type: CLEAN_UP_SESSION,
     });
-    setTimeout(callback, 100);
+    dispatch({
+      type: SIGN_OUT_FAILED,
+    });
+    setTimeout(callback, 200);
   }
 };

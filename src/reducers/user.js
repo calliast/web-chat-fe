@@ -22,7 +22,8 @@ const initialState = user
       _id: null,
       user: null,
       username: null,
-      socket: null
+      socket: null,
+      callback: null
     };
 
 export default function authReducer(state = initialState, action) {
@@ -48,7 +49,7 @@ export default function authReducer(state = initialState, action) {
         _id: null,
         user: null,
         username: null,
-        socket: null
+        socket: null,
       }
     case SIGN_OUT_FAILED:
       return {
