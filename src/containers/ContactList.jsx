@@ -24,7 +24,7 @@ export default function ContactList() {
   const handleAddContact = (e) => {
     e.preventDefault();
     if (newContact === "") return;
-    dispatch(addContact(newContact));
+    dispatch(addContact(newContact.toLowerCase()));
     setNewContact("");
   };
 

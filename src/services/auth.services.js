@@ -2,7 +2,7 @@ import axios from "axios";
 import { authHeader } from "../helpers/utils";
 
 export const api = axios.create({
-  baseURL: "http://192.168.1.30:3036",
+  baseURL: "http://192.168.1.6:3036",
   timout: 3000,
   headers: authHeader(),
 });
@@ -18,7 +18,6 @@ const userSignIn = async ({ username }) => {
     console.log(
       `SERVICE AUTH FAILED\nError\t: ${error.name}\nCode\t: ${error.code}\nMessage\t: ${error.message}`
     );
-    // console.log("ini config", error.config);
     return error;
   }
 };

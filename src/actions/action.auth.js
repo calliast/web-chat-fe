@@ -14,7 +14,7 @@ export const connectSocket = () => async (dispatch, getState) => {
   const currentTimestamp = new Date().getTime() / 1000;
   try {
     if (isLoggedIn) {
-      const socket = io("http://192.168.1.30:3036", {
+      const socket = io("http://192.168.1.6:3036", {
         query: { username, timestamp: currentTimestamp },
       });
       socket.on("connect", () => {
@@ -46,6 +46,7 @@ export const offSocket = (event) => (dispatch, getState) => {
 };
 
 export const signIn = (username, callback) => async (dispatch, getState) => {
+  console.log("🚀 ~ file: action.auth.js:49 ~ signIn ~ username", username)
   try {
     const request = await Auth.userSignIn({ username });
     if (!request?.success) throw request;
@@ -69,6 +70,7 @@ export const signOut = (callback) => async (dispatch, getState) => {
     const request = await Auth.userSignOut();
     if (!request.data?.success) throw request;
 
+    dispatch(closeSocket('connect'));
     await dispatch({
       type: CLEAN_UP_SESSION,
     });
@@ -80,6 +82,8 @@ export const signOut = (callback) => async (dispatch, getState) => {
     console.log(
       `Signout failed\nError\t: ${name}\nCode\t: ${code}\nMessage\t: ${message}`
     );
+    
+    dispatch(closeSocket('connect'));
     await dispatch({
       type: CLEAN_UP_SESSION,
     });

@@ -19,7 +19,7 @@ export default function Login() {
       let username = formData.get("username");
 
       dispatch(
-        signIn(username, () => {
+        signIn(username.toLowerCase(), () => {
           navigate(location, { replace: true });
         })
       );
