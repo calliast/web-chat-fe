@@ -9,8 +9,15 @@ import {
   sendMessage,
   updateReadNotice,
   deleteMessage,
+  loadUserData,
+  addContact,
 } from "../actions/action";
-import { connectSocket, closeSocket, offSocket } from "../actions/action.auth";
+import {
+  connectSocket,
+  closeSocket,
+  offSocket,
+  newAccount,
+} from "../actions/action.auth";
 
 export default function ChatRoom() {
   const newMessageSent = useRef(null);
@@ -19,18 +26,29 @@ export default function ChatRoom() {
   const [removeMessageID, setRemoveMessageID] = useState({
     _id: "",
     message: "",
+    sentID: "",
     receiverID: "",
-    chatID: "",
     sentStatus: "",
   });
   const db = useSelector((state) => state.db);
-  const { socket } = useSelector((state) => state.user);
+  const user = useSelector((state) => state.user);
+  const { socket, isNew } = user;
   let run = 0;
 
   useEffect(() => {
     console.log("run render");
     if (run === 1) {
       dispatch(connectSocket());
+      if (isNew) {
+        dispatch(
+          newAccount({
+            _id: user._id,
+            name: user.name,
+            username: user.username,
+          })
+        );
+      }
+      dispatch(loadUserData());
       return () => {
         dispatch(closeSocket("connect"));
       };
@@ -51,10 +69,15 @@ export default function ChatRoom() {
         console.log("payload dari receive-read-notice", payload);
         dispatch(updateReadNotice(payload));
       });
+      socket.on("receive-notice-new-account", (payload) => {
+        console.log("payload dari receive-notice-new-account", payload);
+        dispatch(addContact(payload));
+      });
       return () => {
         dispatch(offSocket("receive-chat"));
         dispatch(offSocket("receive-delete-notice"));
         dispatch(offSocket("receive-read-notice"));
+        dispatch(offSocket("receive-notice-new-account"));
       };
     }
   }, [socket, dispatch]);
@@ -74,16 +97,16 @@ export default function ChatRoom() {
   const handleRemoveMessage = useCallback(() => {
     const payload = {
       _id: removeMessageID._id,
+      sentID: removeMessageID.sentID,
       receiverID: removeMessageID.receiverID,
-      chatID: removeMessageID.chatID,
     };
     dispatch(deleteMessage(payload, removeMessageID.sentStatus));
     setTimeout(() => {
       setRemoveMessageID({
         _id: "",
         message: "",
+        sentID: "",
         receiverID: "",
-        chatID: "",
         sentStatus: "",
       });
     }, 500);
@@ -117,7 +140,7 @@ export default function ChatRoom() {
                   style={{ height: "63vh" }}
                   ref={newMessageSent}
                 >
-                  {db.selectedChat.conversation.map((item, index) => {
+                  {db.selectedChat.map((item, index) => {
                     return (
                       <ChatItem
                         key={index}
@@ -204,8 +227,8 @@ export default function ChatRoom() {
                     setRemoveMessageID({
                       _id: "",
                       message: "",
+                      sentID: "",
                       receiverID: "",
-                      chatID: "",
                       sentStatus: "",
                     });
                   }, 500)

@@ -13,14 +13,14 @@ const initialState = user
   ? {
       isLoggedIn: true,
       _id: user._id,
-      user: user.name,
+      name: user.name,
       username: user.username,
       socket: null,
     }
     : {
       isLoggedIn: false,
       _id: null,
-      user: null,
+      name: null,
       username: null,
       socket: null,
       callback: null
@@ -31,12 +31,14 @@ export default function authReducer(state = initialState, action) {
   
   switch (type) {
     case SIGN_IN_SUCCESS:
+      console.log('payload isNew', payload);
       return {
         ...state,
         isLoggedIn: true,
         _id: payload._id,
-        user: payload.name,
+        name: payload.name,
         username: payload.username,
+        isNew: payload.isNew
       };
     case SIGN_IN_FAILED:
       return {
@@ -47,7 +49,7 @@ export default function authReducer(state = initialState, action) {
       return {
         isLoggedIn: false,
         _id: null,
-        user: null,
+        name: null,
         username: null,
         socket: null,
       }
@@ -55,7 +57,7 @@ export default function authReducer(state = initialState, action) {
       return {
         isLoggedIn: false,
         _id: null,
-        user: null,
+        name: null,
         username: null,
         socket: null
       }

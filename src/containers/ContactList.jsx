@@ -17,10 +17,6 @@ export default function ContactList() {
   const [newContact, setNewContact] = useState("");
   const [contactActive, setContactActive] = useState(null);
 
-  useEffect(() => {
-    dispatch(loadUserData());
-  }, []);
-
   const handleAddContact = (e) => {
     e.preventDefault();
     if (newContact === "") return;
@@ -28,9 +24,9 @@ export default function ContactList() {
     setNewContact("");
   };
 
-  const handleSelectContact = (contact, chatID) => {
+  const handleSelectContact = (contact) => {
     setContactActive(contact.username);
-    dispatch(selectContact(contact, chatID));
+    dispatch(selectContact(contact));
   };
 
   const handleSignOut = () => {
@@ -49,41 +45,14 @@ export default function ContactList() {
           style={{ height: "15vh" }}
         >
           <h6 className="text-success text-decoration-underline">
-            Welcome {user.user}
+            Welcome {user.name}
           </h6>
           <h4 className="text-secondary">Contact List</h4>
         </div>
-        <div
-          className="card-body bg-grey border-top border-bottom"
-          style={{ height: "10vh", maxHeight: "10vh" }}
-        >
-          <form
-            className="input-group bg-white"
-            id="add-contact"
-            onSubmit={handleAddContact}
-          >
-            <input
-              type="text"
-              className="form-control"
-              onChange={(e) => setNewContact(e.target.value)}
-              placeholder="Insert username..."
-              value={newContact}
-              required
-            />
-            <button
-              className="btn text-white bg-blue"
-              type="submit"
-              form="add-contact"
-              title="Add ID to your contact list"
-            >
-              <FontAwesomeIcon icon={faPlusCircle} />
-            </button>
-          </form>
-        </div>
-        <div className="card-body bg-grey">
+        <div className="card-body bg-grey border-top border-bottom">
           <div
             className="d-flex flex-column overflow-auto"
-            style={{ height: "52vh", maxHeight: "52vh" }}
+            style={{ height: "62vh", maxHeight: "62vh" }}
           >
             {db.contacts.map((item, index) => {
               return (
@@ -92,18 +61,14 @@ export default function ContactList() {
                   _id={item._id}
                   name={item.username}
                   contactActive={contactActive}
-                  chatID={item.chatID}
                   unread={item.unreadCount}
                   setActive={() =>
-                    handleSelectContact(
-                      {
-                        _id: item._id,
-                        username: item.username,
-                        name: item.name,
-                        unreadCount: item.unreadCount,
-                      },
-                      item.chatID
-                    )
+                    handleSelectContact({
+                      _id: item._id,
+                      username: item.username,
+                      name: item.name,
+                      unreadCount: item.unreadCount,
+                    })
                   }
                 />
               );

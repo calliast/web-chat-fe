@@ -10,18 +10,18 @@ import {
 } from "./types";
 
 export const connectSocket = () => async (dispatch, getState) => {
-  const { isLoggedIn, username } = getState().user;
+  const user = getState().user;
+  const { isLoggedIn, username } = user;
   const currentTimestamp = new Date().getTime() / 1000;
   try {
     if (isLoggedIn) {
-      const socket = io("http://192.168.1.6:3036", {
+      const socket = io("http://192.168.8.108:3036", {
         query: { username, timestamp: currentTimestamp },
       });
-      socket.on("connect", () => {
-        dispatch({
-          type: CONNECT_SOCKET,
-          socket,
-        });
+      // socket.on("connect", () => {
+      await dispatch({
+        type: CONNECT_SOCKET,
+        socket,
       });
     }
   } catch (error) {
@@ -45,8 +45,16 @@ export const offSocket = (event) => (dispatch, getState) => {
   }
 };
 
+export const newAccount = (payload) => (dispatch, getState) => {
+  const { socket } = getState().user;
+  console.log("🚀 ~ file: action.auth.js:51 ~ newAccount ~ socket", socket);
+  if (socket) {
+    socket.emit("send-notice-new-account", payload);
+    console.log(`sending new account notice for :${payload.username}`);
+  }
+};
+
 export const signIn = (username, callback) => async (dispatch, getState) => {
-  console.log("🚀 ~ file: action.auth.js:49 ~ signIn ~ username", username)
   try {
     const request = await Auth.userSignIn({ username });
     if (!request?.success) throw request;
@@ -70,7 +78,7 @@ export const signOut = (callback) => async (dispatch, getState) => {
     const request = await Auth.userSignOut();
     if (!request.data?.success) throw request;
 
-    dispatch(closeSocket('connect'));
+    dispatch(closeSocket("connect"));
     await dispatch({
       type: CLEAN_UP_SESSION,
     });
@@ -82,8 +90,8 @@ export const signOut = (callback) => async (dispatch, getState) => {
     console.log(
       `Signout failed\nError\t: ${name}\nCode\t: ${code}\nMessage\t: ${message}`
     );
-    
-    dispatch(closeSocket('connect'));
+
+    dispatch(closeSocket("connect"));
     await dispatch({
       type: CLEAN_UP_SESSION,
     });

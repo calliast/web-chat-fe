@@ -41,8 +41,8 @@ export default function ChatItem(props) {
       return {
         _id: props._id,
         message: props.message,
+        sentID: user._id,
         receiverID: db.selectedContact.username,
-        chatID: db.selectedChat._id,
         sentStatus: props.sentStatus,
       };
     });
@@ -50,7 +50,6 @@ export default function ChatItem(props) {
     props._id,
     props.sentStatus,
     db.selectedContact.username,
-    db.selectedChat._id,
   ]);
 
   return (

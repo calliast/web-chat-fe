@@ -22,6 +22,7 @@ import {
   SEND_NEW_MESSAGE_BE_SUCCESS,
   SEND_NEW_MESSAGE_FE,
   UPDATE_READ_STATUS,
+  RESEND_MESSAGE_FAILED,
 } from "./types";
 
 export const loadUserData = () => async (dispatch, getState) => {
@@ -36,13 +37,9 @@ export const loadUserData = () => async (dispatch, getState) => {
       const newResponse = response.data.data.contacts.map((contact) => {
         let unreadCount = 0;
 
-        response.data.data.chats.forEach((chat) => {
-          if (chat.contactName.split("$_&_$").includes(contact.username)) {
-            unreadCount += chat.conversation.filter(
-              (message) => !message.readStatus && message.sentID === contact._id
-            ).length;
-          }
-        });
+        unreadCount += response.data.data.chats.filter(
+          (message) => !message.readStatus && message.sentID === contact._id
+        ).length;
 
         return {
           ...contact,
@@ -70,20 +67,13 @@ export const loadUserData = () => async (dispatch, getState) => {
 };
 
 export const addContact =
-  (contactUsername, chatID = null, isUnknownContact = null) =>
-  async (dispatch, getState) => {
-    const username = getState().user.username;
+  (contact, isUnknownContact = null) =>
+  async (dispatch) => {
     try {
-      const getContact = await apiAddContact(username, {
-        contactUsername,
-        chatID,
-      });
-      if (!getContact.data.success) throw getContact;
       dispatch({
         type: ADD_CONTACT_SUCCESS,
         payload: {
-          contact: getContact.data.data.contact,
-          chat: getContact.data.data.chat,
+          contact,
           isUnknownContact,
         },
       });
@@ -94,51 +84,44 @@ export const addContact =
     }
   };
 
-export const selectContact =
-  (contact, chatID) => async (dispatch, getState) => {
-    console.log("selectcontact - sedang mengeset contact", contact);
-    let contactData;
-    const state = getState().db;
-    try {
-      if (!chatID) {
-        contactData = state.chat.filter((item) =>
-          item.contactName.split("$_&_$").includes(contact.username)
-        );
-      } else {
-        contactData = state.chat.filter((item) => item._id === chatID);
-      }
+export const selectContact = (contact) => async (dispatch, getState) => {
+  console.log("selectcontact - sedang mengeset contact", contact);
+  const state = getState().db;
+  try {
+    let contactData = state.chats.filter(
+      (item) => item.receiverID === contact._id || item.sentID === contact._id
+    );
 
-      let unreadMessageData = contactData[0].conversation.filter(
-        (item) => !item.readStatus && item.sentID === contact._id
-      );
-      console.log(
-        "selectcontact - sedang menghitung jika ada message unread",
-        unreadMessageData
-      );
-      let unreadMessageIDs = unreadMessageData.map((contact) => contact._id);
+    let unreadMessageData = contactData.filter(
+      (item) => !item.readStatus && item.sentID === contact._id
+    );
+    console.log(
+      "selectcontact - sedang menghitung jika ada message unread",
+      unreadMessageData
+    );
+    let unreadMessageIDs = unreadMessageData.map((message) => message._id);
 
-      if (unreadMessageData.length > 0) {
-        dispatch(updateReadStatus(unreadMessageIDs));
-      }
-
-      dispatch({
-        type: SELECT_CONTACT,
-        payload: {
-          contact,
-          chat: contactData[0],
-        },
-      });
-
-      // Make an array of data for any unread messages
-    } catch (error) {
-      console.log("error saat select contact", error);
+    if (unreadMessageData.length > 0) {
+      dispatch(updateReadStatus(unreadMessageIDs));
     }
-  };
+
+    dispatch({
+      type: SELECT_CONTACT,
+      payload: {
+        contact,
+        chat: contactData,
+      },
+    });
+
+    // Make an array of data for any unread messages
+  } catch (error) {
+    console.log("error saat select contact", error);
+  }
+};
 
 export const sendMessage = (payload) => async (dispatch, getState) => {
   const state = getState();
   const _id = Date.now();
-  const chatID = state.db.selectedChat._id;
 
   //. re-Organize payload to include ID
   const newPayload = {
@@ -161,7 +144,7 @@ export const sendMessage = (payload) => async (dispatch, getState) => {
     });
 
     //. Store message into database via API
-    const sendChat = await apiSendMessage(chatID, newPayload);
+    const sendChat = await apiSendMessage(newPayload);
     if (!sendChat.data.success) throw sendChat;
     dispatch({
       type: SEND_NEW_MESSAGE_BE_SUCCESS,
@@ -193,10 +176,7 @@ const sendMessageSocket = (payload) => async (dispatch, getState) => {
   const state = getState();
   const socket = getState().user.socket;
   try {
-    //. include chat ID into the payload
-    payload.chatID = state.db.selectedChat._id;
-    //. update the the sender and receiver IDs with username
-    payload.sentID = state.user.username;
+    //. update the receiver IDs with username
     payload.receiverID = state.db.selectedContact.username;
 
     socket.emit("send-chat", payload);
@@ -211,9 +191,8 @@ const sendMessageSocket = (payload) => async (dispatch, getState) => {
 
 export const resendMessageRedux =
   (_id, payload) => async (dispatch, getState) => {
-    const chatID = getState().db.selectedChat._id;
     try {
-      const sendChat = await apiSendMessage(chatID, payload);
+      const sendChat = await apiSendMessage(payload);
       if (!sendChat.data.success) throw sendChat;
       dispatch({
         type: RESEND_MESSAGE,
@@ -229,6 +208,9 @@ export const resendMessageRedux =
       dispatch(sendMessageSocket(payload));
     } catch (error) {
       console.log("RESEND MESSAGE FAILED", error);
+      dispatch({
+        type: RESEND_MESSAGE_FAILED
+      })
     }
   };
 
@@ -236,32 +218,20 @@ export const receiveMessage = (payload) => async (dispatch, getState) => {
   console.log("🚀 ~ file: action.js:232 ~ receiveMessage ~ payload", payload);
   const user = getState().user;
   const db = getState().db;
-  const chatID = payload.chatID;
-  delete payload.chatID;
   try {
-    //. Check if contact exist in contact list
-    if (
-      db.contacts.filter((item) => item.username === payload.sentID).length ===
-      0
-    ) {
-      // if no, then add as new contact
-      //. this way, contact info as well as the latest message will be included in the addContact payload automatically
-      await dispatch(addContact(payload.sentID, chatID, true));
-    } else {
-      payload.receiverID = user._id;
+    payload.receiverID = user._id;
 
-      //. Dispatch an action to update state with the new message,
-      dispatch({
-        type: RECEIVE_NEW_MESSAGE,
-        payload: {
-          message: payload,
-          chatID,
-        },
-      });
-    }
+    //. Dispatch an action to update state with the new message,
+    dispatch({
+      type: RECEIVE_NEW_MESSAGE,
+      payload: {
+        message: payload,
+      },
+    });
 
     //. Check if user currently seeing the same chatID where message intended on being delivered to,
-    if (db.selectedChat._id === chatID) {
+    if (db.selectedContact._id === payload.sentID) {
+      console.log("🚀 ~ file: action.js:231 ~ receiveMessage ~ db.selectedContact._id", db.selectedContact._id)
       dispatch(updateReadStatus([payload._id]));
     }
   } catch (error) {
@@ -273,7 +243,7 @@ export const receiveMessage = (payload) => async (dispatch, getState) => {
 export const updateReadStatus = (messageIDs) => async (dispatch, getState) => {
   const socket = getState().user.socket;
   console.log(
-    "updatereadnotice - berikut id message yang akan di update read statusnya",
+    "updatereadstatus - berikut id message yang akan di update read statusnya dan dikirim kembali pada sender",
     messageIDs
   );
   try {
@@ -288,11 +258,10 @@ export const updateReadStatus = (messageIDs) => async (dispatch, getState) => {
     });
 
     const newPayload = {
-      sentID: getState().user.username,
+      sentID: getState().user._id,
       receiverID: getState().db.selectedContact.username,
       payload: {
         newMessageIDs: updatedMessageIDs.data.data,
-        chatID: getState().db.selectedChat._id,
       },
     };
 
@@ -305,7 +274,7 @@ export const updateReadStatus = (messageIDs) => async (dispatch, getState) => {
 //. send notice that message has been read to the sender
 export const updateReadNotice = (payload) => async (dispatch, getState) => {
   console.log(
-    "sendreadnotice - berikut adalah payload yang akan dikirim kembali pada sender",
+    "receivereadnotice - berikut adalah payload yang diterima dari receiver",
     payload
   );
 
@@ -354,7 +323,7 @@ export const deleteMessage =
     }
   };
 
-export const deleteMessageNotice = (payload) => async (dispatch, getState) => {
+export const deleteMessageNotice = (payload) => async (dispatch) => {
   try {
     dispatch({
       type: DELETE_MESSAGE_NOTICE,
