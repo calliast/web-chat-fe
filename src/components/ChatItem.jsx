@@ -46,11 +46,7 @@ export default function ChatItem(props) {
         sentStatus: props.sentStatus,
       };
     });
-  }, [
-    props._id,
-    props.sentStatus,
-    db.selectedContact.username,
-  ]);
+  }, [props._id, props.sentStatus, user._id, db.selectedContact.username]);
 
   return (
     <Fragment>
@@ -139,7 +135,11 @@ export default function ChatItem(props) {
         </div>
         {isSentID && !props.sentStatus && (
           <div className="btn pt-2 bg-white rounded-circle border-0 align-items-center">
-            <FontAwesomeIcon icon={faExclamation} color="orange" className="fa-lg"/>
+            <FontAwesomeIcon
+              icon={faExclamation}
+              color="orange"
+              className="fa-lg"
+            />
           </div>
         )}
       </div>
